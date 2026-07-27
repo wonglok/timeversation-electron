@@ -9,7 +9,7 @@ import ClaudeCodeColor from "@lobehub/icons/es/ClaudeCode/components/Color";
 import CodexColor from "@lobehub/icons/es/Codex/components/Color";
 import QwenColor from "@lobehub/icons/es/Qwen/components/Color";
 import KimiColor from "@lobehub/icons/es/Kimi/components/Color";
-import GeminiCLIColor from "@lobehub/icons/es/GeminiCLI/components/Color";
+// import GeminiCLIColor from "@lobehub/icons/es/GeminiCLI/components/Color";
 
 // Monochrome brand icons (no Color variant in package)
 import OpenCodeIcon from "@lobehub/icons/es/OpenCode";
@@ -112,16 +112,16 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         homepage: "https://github.com/MoonshotAI/kimi-code",
         icon: KimiColor,
     },
-    {
-        name: "Gemini CLI",
-        slug: "gemini-cli",
-        cliName: "gemini",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Google's Gemini-powered CLI agent",
-        homepage: "https://github.com/google-gemini/gemini-cli",
-        icon: GeminiCLIColor,
-    },
+    // {
+    //     name: "Gemini CLI",
+    //     slug: "gemini-cli",
+    //     cliName: "gemini",
+    //     detectionArgs: ["--version"],
+    //     versionRegex: /(\d+\.\d+\.\d+)/,
+    //     description: "Google's Gemini-powered CLI agent",
+    //     homepage: "https://github.com/google-gemini/gemini-cli",
+    //     icon: GeminiCLIColor,
+    // },
     {
         name: "Cursor CLI",
         slug: "cursor-cli",
@@ -165,6 +165,8 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     homepage: "https://docs.github.com/en/copilot",
     //     icon: GithubCopilotIcon,
     // },
+    //
+    //
     // {
     //     name: "Cline CLI",
     //     slug: "cline-cli",

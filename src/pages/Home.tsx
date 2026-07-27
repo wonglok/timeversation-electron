@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     BUILTIN_AGENTS,
     getAgentDetectionPayload,
@@ -11,6 +12,7 @@ import {
 const API_BASE = "http://localhost:8390";
 
 export function Home() {
+    const navigate = useNavigate();
     const [installed, setInstalled] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
@@ -64,8 +66,21 @@ export function Home() {
                         return (
                             <div
                                 key={agent.slug}
-                                title={agent.description}
-                                className="glass-card relative flex flex-col items-center gap-2.5 px-4 py-5 transition-all duration-300 hover:-translate-y-0.5"
+                                title={
+                                    isInstalled
+                                        ? `Open chat with ${agent.name}`
+                                        : agent.description
+                                }
+                                onClick={
+                                    isInstalled
+                                        ? () => navigate(`/chat/${agent.slug}`)
+                                        : undefined
+                                }
+                                className={`glass-card relative flex flex-col items-center gap-2.5 px-4 py-5 transition-all duration-300 ${
+                                    isInstalled
+                                        ? "cursor-pointer hover:-translate-y-0.5 hover:ring-2 hover:ring-[var(--tiffany-glow)]"
+                                        : "opacity-50 cursor-default"
+                                }`}
                             >
                                 {/* Installed indicator */}
                                 {isInstalled && (

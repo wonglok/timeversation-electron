@@ -3,8 +3,7 @@ export const args = [
     "-p",
     "__REPLACE_ME_WITH_PROMPT__",
     "--print",
-    "--verbose",
     "--output-format",
-    "stream-json",
+    "text",
     "--verbose",
 ];
