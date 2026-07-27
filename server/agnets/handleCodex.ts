@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { execSync, spawn } from "node:child_process";
+import { execSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 // ============================================================================
@@ -70,11 +70,11 @@ interface AgentConfig {
 /** Resolve CLI args, injecting the user message for the placeholder token */
 function resolveArgs(config: AgentConfig, message: string): string[] {
     const resolved = config.args.map((arg) =>
-        arg === "__REPLACE_ME_WITH_PROMPT__" ? JSON.stringify(message) : arg,
+        arg === "__REPLACE_ME_WITH_PROMPT__" ? message : arg,
     );
     // Append -- so the user message is never interpreted as a flag,
     // regardless of which agent config is used.
-    // resolved.push("--");
+    resolved.push("--");
     return resolved;
 }
 
@@ -87,24 +87,9 @@ export const handleCodex = ({
     res: any;
     message: string;
 }) => {
-    let appDataPath = app.getPath("appData");
-    let sessionID = `${req.body.sessionID || crypto.randomUUID()}`;
-    let sessionPath = `${path.join(appDataPath, "session", sessionID)}`;
-
-    if (sessionPath) {
-        try {
-            mkdirSync(sessionPath, { recursive: true });
-        } catch (e) {}
-    }
-
     const config = {
         cmd: "codex",
-        args: [
-            "exec",
-            "__REPLACE_ME_WITH_PROMPT__",
-            "--cd",
-            JSON.stringify(sessionPath),
-        ],
+        args: ["exec", "__REPLACE_ME_WITH_PROMPT__"],
     };
 
     // --- SSE headers ---
@@ -123,18 +108,28 @@ export const handleCodex = ({
     // Build a shell-safe command string for execSync
     const cmdline = [config.cmd, ...resolvedArgs]
         .map((arg) => {
-            // Single-quote escape: replace ' with '\'' and wrap in quotes
-            if (/[ \t\n'"$`\\]/.test(arg)) {
-                return `'${arg.replace(/'/g, "'\\''")}'`;
-            }
+            // // Single-quote escape: replace ' with '\'' and wrap in quotes
+            // if (/[ \t\n'"$`\\]/.test(arg)) {
+            //     return `'${arg.replace(/'/g, "'\\''")}'`;
+            // }
             return arg;
         })
         .join(" ");
 
     try {
+        let appDataPath = app.getPath("appData");
+        let sessionID = `${req.body.sessionID || crypto.randomUUID()}`;
+        let sessionPath = `${path.join(appDataPath, "session", sessionID)}`;
+        if (sessionPath) {
+            try {
+                mkdirSync(sessionPath, { recursive: true });
+            } catch (e) {}
+        }
+
         const stdout = execSync(cmdline, {
             env: process.env,
-            cwd: sessionPath,
+            cwd: `${sessionPath}`,
+            input: ``,
             encoding: "utf-8",
             stdio: ["pipe", "pipe", "pipe"],
             maxBuffer: 50 * 1024 * 1024, // 50 MB
