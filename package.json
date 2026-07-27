@@ -29,6 +29,7 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@gonetone/get-youtube-id-by-url": "^2.0.0",
     "@lancedb/lancedb": "^0.31.0",
+    "@lobehub/icons": "^5.15.0",
     "birpc": "^4.0.0",
     "classnames": "^2.5.1",
     "cors": "^2.8.6",

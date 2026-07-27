@@ -73,7 +73,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Anthropic's agentic coding CLI tool",
 		homepage: "https://docs.anthropic.com/en/docs/claude-code",
-		icon: "🧠",
+		icon: "claude",
 	},
 	{
 		name: "Kilo Code",
@@ -82,7 +82,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Open-source AI coding agent with multi-provider support",
 		homepage: "https://github.com/kilocode/kilocode",
-		icon: "⚡",
+		icon: "kilocode",
 	},
 	{
 		name: "OpenAI Codex CLI",
@@ -91,7 +91,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "OpenAI's terminal-based coding agent",
 		homepage: "https://github.com/openai/codex",
-		icon: "🤖",
+		icon: "codex",
 	},
 	{
 		name: "Qwen Code",
@@ -100,7 +100,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Alibaba's Qwen-powered coding CLI agent",
 		homepage: "https://github.com/QwenLM/qwen-code",
-		icon: "🐉",
+		icon: "qwen",
 	},
 	{
 		name: "OpenCode",
@@ -109,7 +109,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Open-source terminal coding agent with MCP support",
 		homepage: "https://github.com/opencode-ai/opencode",
-		icon: "🔓",
+		icon: "opencode",
 	},
 	{
 		name: "Kimi Code",
@@ -118,7 +118,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Moonshot AI's Kimi-powered coding agent",
 		homepage: "https://github.com/MoonshotAI/kimi-code",
-		icon: "🌙",
+		icon: "kimi",
 	},
 	{
 		name: "Pi Coding Agent",
@@ -127,7 +127,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Pi AI coding assistant CLI",
 		homepage: "https://github.com/pi-ai/pi-coding-agent",
-		icon: "π",
+		icon: "pi",
 	},
 	{
 		name: "Gemini CLI",
@@ -136,7 +136,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Google's Gemini-powered CLI agent",
 		homepage: "https://github.com/google-gemini/gemini-cli",
-		icon: "💎",
+		icon: "gemini",
 	},
 	{
 		name: "Aider",
@@ -145,7 +145,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "AI pair programming in your terminal with multi-model support",
 		homepage: "https://github.com/Aider-AI/aider",
-		icon: "🤝",
+		icon: "handshake",
 	},
 	{
 		name: "Amazon Q Developer CLI",
@@ -154,7 +154,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "AWS Q Developer command-line coding assistant",
 		homepage: "https://aws.amazon.com/q/developer/",
-		icon: "☁️",
+		icon: "cloud",
 	},
 	{
 		name: "Cursor CLI",
@@ -163,7 +163,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Cursor AI editor CLI tools",
 		homepage: "https://cursor.com",
-		icon: "🖱️",
+		icon: "cursor",
 	},
 	{
 		name: "Windsurf CLI",
@@ -172,7 +172,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Codeium's Windsurf IDE command-line interface",
 		homepage: "https://codeium.com/windsurf",
-		icon: "🌊",
+		icon: "windsurf",
 	},
 	{
 		name: "GitHub Copilot (gh extension)",
@@ -181,7 +181,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "GitHub Copilot via gh CLI extension",
 		homepage: "https://docs.github.com/en/copilot",
-		icon: "🐙",
+		icon: "copilot",
 	},
 	{
 		name: "Tabby",
@@ -190,7 +190,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Self-hosted AI coding assistant with open-source models",
 		homepage: "https://github.com/TabbyML/tabby",
-		icon: "🐱",
+		icon: "cat",
 	},
 	{
 		name: "Cline CLI",
@@ -199,7 +199,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Cline's autonomous coding agent CLI",
 		homepage: "https://github.com/cline/cline",
-		icon: "🦾",
+		icon: "cline",
 	},
 	{
 		name: "Roo Code",
@@ -208,7 +208,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Roo Code AI coding assistant CLI",
 		homepage: "https://github.com/RooVetGit/Roo-Code",
-		icon: "🦘",
+		icon: "roocode",
 	},
 	{
 		name: "Node.js (baseline)",
@@ -217,7 +217,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /^v(\d+\.\d+\.\d+)/m,
 		description: "Node.js JavaScript runtime (baseline check)",
 		homepage: "https://nodejs.org",
-		icon: "💚",
+		icon: "heart",
 	},
 	{
 		name: "Bun (baseline)",
@@ -226,7 +226,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 		versionRegex: /(\d+\.\d+\.\d+)/,
 		description: "Bun all-in-one JavaScript runtime & toolkit",
 		homepage: "https://bun.sh",
-		icon: "🥟",
+		icon: "package",
 	},
 ];
 
@@ -457,9 +457,9 @@ export class BringYourOwnAgent {
 	 * ```ts
 	 * for await (const result of byoa.scanStream()) {
 	 *   if (result.installed) {
-	 *     console.log(`✅ ${result.agent.name} ${result.version}`);
+	 *     console.log(`[OK] ${result.agent.name} ${result.version}`);
 	 *   } else {
-	 *     console.log(`❌ ${result.agent.name}`);
+	 *     console.log(`[MISS] ${result.agent.name}`);
 	 *   }
 	 * }
 	 * ```
