@@ -144,14 +144,19 @@ export function Chat() {
     } = useChatStore();
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const scanControllerRef = useRef<AbortController | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
-    // Auto-scan on mount if not yet scanned
+    // Auto-scan on mount if not yet scanned; abort on unmount
     useEffect(() => {
         if (scanStatus === "idle" && results.length === 0) {
-            startScan();
+            scanControllerRef.current = startScan();
         }
-    }, [scanStatus, results.length, startScan]);
+        return () => {
+            scanControllerRef.current?.abort();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Pre-select agent from query param
     useEffect(() => {
@@ -171,7 +176,15 @@ export function Chat() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    const installed = results.filter((r) => r.installed);
+    // Deduplicate by agent name (handles StrictMode double-mount duplicate scans)
+    const seen = new Set<string>();
+    const installed = results
+        .filter((r) => r.installed)
+        .filter((r) => {
+            if (seen.has(r.agent.name)) return false;
+            seen.add(r.agent.name);
+            return true;
+        });
 
     const handleSend = useCallback(
         (content: string) => {

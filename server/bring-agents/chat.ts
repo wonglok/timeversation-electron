@@ -44,7 +44,6 @@ export async function* chatStream(req: ChatRequest): AsyncGenerator<ChatChunk> {
     const chunks: ChatChunk[] = [];
     let done = false;
     let error: Error | undefined;
-    let resolved = false;
 
     const push = (chunk: ChatChunk) => {
         chunks.push(chunk);
