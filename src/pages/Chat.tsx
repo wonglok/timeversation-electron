@@ -13,6 +13,8 @@ interface Message {
     content: string;
 }
 
+let sessionID = `${crypto.randomUUID()}`;
+
 export function Chat() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
@@ -68,7 +70,7 @@ export function Chat() {
                 method: "POST",
                 mode: "cors",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slug, message }),
+                body: JSON.stringify({ slug, message, sessionID }),
                 signal,
             });
 

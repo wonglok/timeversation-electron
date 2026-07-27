@@ -1,4 +1,7 @@
+import { app } from "electron";
 import { execSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 // ============================================================================
 // SSE encoder helpers
 // ============================================================================
@@ -114,9 +117,18 @@ export const handleOpenCode = ({
         .join(" ");
 
     try {
+        let appDataPath = app.getPath("appData");
+        let sessionID = `${req.body.sessionID || crypto.randomUUID()}`;
+        let sessionPath = `${path.join(appDataPath, "session", sessionID)}`;
+        if (sessionPath) {
+            try {
+                mkdirSync(sessionPath, { recursive: true });
+            } catch (e) {}
+        }
+
         const stdout = execSync(cmdline, {
             env: process.env,
-            cwd: process.cwd(),
+            cwd: `${sessionPath}`,
             encoding: "utf-8",
             stdio: ["pipe", "pipe", "pipe"],
             maxBuffer: 50 * 1024 * 1024, // 50 MB

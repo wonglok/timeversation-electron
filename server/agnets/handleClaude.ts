@@ -1,4 +1,7 @@
+import { app } from "electron";
 import { spawn } from "node:child_process";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 // ============================================================================
 // SSE encoder helpers
 // ============================================================================
@@ -109,9 +112,19 @@ export const handleClaude = ({
 
     const resolvedArgs = resolveArgs(config, message);
 
+    let appDataPath = app.getPath("appData");
+    let sessionID = `${req.body.sessionID || crypto.randomUUID()}`;
+    let sessionPath = `${path.join(appDataPath, "session", sessionID)}`;
+
+    if (sessionPath) {
+        try {
+            mkdirSync(sessionPath, { recursive: true });
+        } catch (e) {}
+    }
+
     const proc = spawn(config.cmd, resolvedArgs, {
         env: process.env,
-        cwd: process.cwd(),
+        cwd: sessionPath,
         stdio: ["pipe", "pipe", "pipe"],
     });
 
