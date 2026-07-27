@@ -37,7 +37,7 @@ export function Home() {
                 {/* Badge */}
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 text-[0.8rem] font-semibold text-[var(--text-secondary)] bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-full backdrop-blur-[16px] reveal-1">
                     <span className="w-[7px] h-[7px] rounded-full bg-[var(--tiffany)] inline-block" />
-                    Unified Agent Workspace
+                    use your already paid agent
                 </div>
 
                 {/* Title */}
@@ -47,9 +47,7 @@ export function Home() {
 
                 {/* Subtitle */}
                 <p className="text-[1.15rem] text-[var(--text-secondary)] leading-[1.7] max-w-[480px] m-0 reveal-3">
-                    All your CLI coding agents, unified in one conversation.
-                    <br />
-                    Stop switching terminals. Start shipping faster.
+                    New kind of conversation that saves your time.
                 </p>
             </section>
 
