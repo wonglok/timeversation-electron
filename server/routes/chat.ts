@@ -81,11 +81,13 @@ const AGENT_CONFIGS: Record<string, AgentConfig> = {
 
 /** Resolve CLI args, injecting the user message for the placeholder token */
 function resolveArgs(config: AgentConfig, message: string): string[] {
-    return config.args
-        .map((arg) =>
-            arg === "__REPLACE_ME_WITH_PROMPT__" ? ["--", message] : arg,
-        )
-        .flat();
+    const resolved = config.args.map((arg) =>
+        arg === "__REPLACE_ME_WITH_PROMPT__" ? message : arg,
+    );
+    // Append -- so the user message is never interpreted as a flag,
+    // regardless of which agent config is used.
+    resolved.push("--");
+    return resolved;
 }
 
 // ============================================================================
@@ -137,13 +139,21 @@ router.post("/send", async (req, res) => {
                 stderr += data.toString();
             });
 
-            proc.on("close", (code) => {
+            proc.on("close", (code, signal) => {
                 if (code === 0) {
                     resolve(stdout.trim() || "(no output)");
+                } else if (signal) {
+                    reject(
+                        new Error(
+                            stderr.trim() ||
+                                `Process terminated by signal: ${signal}`,
+                        ),
+                    );
                 } else {
                     reject(
                         new Error(
-                            stderr.trim() || `Process exited with code ${code}`,
+                            stderr.trim() ||
+                                `Process exited with code ${code ?? "unknown"}`,
                         ),
                     );
                 }
@@ -259,15 +269,15 @@ router.post("/stream", (req, res) => {
         );
     });
 
-    // --- stderr → SSE named-event chunks ---
-    proc.stderr.on("data", (raw: Buffer) => {
-        pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
-            writeSSEEvent(res, line, "stderr"),
-        );
-    });
+    // // --- stderr → SSE named-event chunks ---
+    // proc.stderr.on("data", (raw: Buffer) => {
+    //     pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
+    //         writeSSEEvent(res, line, "stderr"),
+    //     );
+    // });
 
     // --- Process complete ---
-    proc.on("close", (code) => {
+    proc.on("close", (code, signal) => {
         // Flush any trailing UTF-8 bytes and partial lines
         flushDecoder(
             stdoutDecoder,
@@ -283,24 +293,35 @@ router.post("/stream", (req, res) => {
 
         if (code === 0) {
             writeSSEEvent(res, "[DONE]");
+        } else if (signal) {
+            writeSSEEvent(
+                res,
+                `Process terminated by signal: ${signal}`,
+                "error",
+            );
         } else {
-            writeSSEEvent(res, `Process exited with code ${code}`, "error");
+            writeSSEEvent(
+                res,
+                `Process exited with code ${code ?? "unknown"}`,
+                "error",
+            );
         }
         res.end();
     });
 
-    // --- Process spawn error ---
-    proc.on("error", (err) => {
-        writeSSEEvent(res, err.message, "error");
-        res.end();
-    });
+    // // --- Process spawn error ---
+    // proc.on("error", (err) => {
+    //     writeSSEEvent(res, err.message, "error");
+    //     res.end();
+    // });
 
-    // --- Client disconnect → kill process ---
-    req.on("close", () => {
-        if (!proc.killed) {
-            proc.kill();
-        }
-    });
+    // // --- Client disconnect → kill running process ---
+    // req.on("close", () => {
+    //     // Only kill if the process is still running (exitCode stays null until exit)
+    //     if (proc.exitCode === null && !proc.killed) {
+    //         proc.kill();
+    //     }
+    // });
 });
 
 export default router;

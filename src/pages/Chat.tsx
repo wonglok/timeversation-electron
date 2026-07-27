@@ -74,9 +74,7 @@ export function Chat() {
 
             if (!res.ok) {
                 const err = await res.json().catch(() => null);
-                onError(
-                    err?.error ?? `Server returned ${res.status}`,
-                );
+                onError(err?.error ?? `Server returned ${res.status}`);
                 return;
             }
 
