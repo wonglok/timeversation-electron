@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { handleClaude } from "../agnets/handleClaude";
 import { handleOpenCode } from "../agnets/handleOpenCode";
+import { handleCodex } from "../agnets/handleCodex";
 
 // ============================================================================
 // Router
@@ -28,8 +29,14 @@ router.post("/stream", (req, res) => {
             message,
         });
     } else if (message && slug === "opencode") {
-        //
         handleOpenCode({
+            req,
+            res,
+            message,
+        });
+    } else if (message && slug === "openai-codex-cli") {
+        //
+        handleCodex({
             req,
             res,
             message,
