@@ -3,14 +3,25 @@ import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BrowserWindow } from "electron";
-import { isIP } from "node:net";
-import {
-    BringYourOwnAgent,
-    BUILTIN_AGENTS,
-    type AgentDetectionResult,
-} from "./bring-agents/byoa.ts";
+import { BringYourOwnAgent } from "./bring-agents/byoa.ts";
 import { chatStream } from "./bring-agents/chat.ts";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ============================================================================
+// SSE helpers
+// ============================================================================
+
+const encoder = new TextEncoder();
+
+/** Encode an SSE frame as bytes: "data: <json>\n\n" */
+function sseEvent(event: string, data: unknown): Uint8Array {
+    return encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+/** Encode an SSE data-only frame: "data: <json>\n\n" */
+function sseData(data: unknown): Uint8Array {
+    return encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
+}
 
 // ============================================================================
 // Express app
@@ -84,16 +95,15 @@ function createServer({ win }: { win: BrowserWindow }) {
             try {
                 for await (const result of byoa.scanStream()) {
                     if (aborted) break;
-                    const data: AgentDetectionResult = result;
-                    res.write(`data: ${JSON.stringify(data)}\n\n`);
+                    res.write(sseData(result));
                 }
                 if (!aborted) {
-                    res.write("event: done\ndata: {}\n\n");
+                    res.write(sseEvent("done", {}));
                 }
             } catch (err) {
                 if (!aborted) {
                     res.write(
-                        `event: error\ndata: ${JSON.stringify({ message: (err as Error).message })}\n\n`,
+                        sseEvent("error", { message: (err as Error).message }),
                     );
                 }
             } finally {
@@ -156,18 +166,16 @@ function createServer({ win }: { win: BrowserWindow }) {
         const handle = chatStream(agentName, message, cwd, {
             onChunk: (chunk) => {
                 if (aborted) return;
-                res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+                res.write(sseData(chunk));
             },
             onError: (err) => {
                 if (aborted) return;
-                res.write(
-                    `event: error\ndata: ${JSON.stringify({ message: err.message })}\n\n`,
-                );
+                res.write(sseEvent("error", { message: err.message }));
                 end();
             },
             onDone: () => {
                 if (aborted) return;
-                res.write("event: done\ndata: {}\n\n");
+                res.write(sseEvent("done", {}));
                 end();
             },
         });

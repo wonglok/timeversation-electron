@@ -134,62 +134,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 });
             };
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-
-                const parts = buffer.split("\n\n");
-                buffer = parts.pop() ?? "";
-
-                for (const part of parts) {
-                    const lines = part.split("\n");
-                    let eventType = "";
-                    for (const line of lines) {
-                        if (line.startsWith("event: ")) {
-                            eventType = line.slice(7).trim();
-                        } else if (line.startsWith("data: ")) {
-                            const json = line.slice(6);
-                            if (json === "{}") continue; // done signal (no-op)
-
-                            // Handle server-side error events
-                            if (eventType === "error") {
-                                try {
-                                    const err: { message?: string } =
-                                        JSON.parse(json);
-                                    set({
-                                        sending: false,
-                                        error:
-                                            err.message ?? "Unknown server error",
-                                    });
-                                } catch {
-                                    set({
-                                        sending: false,
-                                        error: "Unknown server error",
-                                    });
-                                }
-                                continue;
-                            }
-
-                            // Regular chunk
-                            try {
-                                const chunk: {
-                                    text?: string;
-                                    stream?: string;
-                                } = JSON.parse(json);
-                                appendText(chunk.text);
-                            } catch {
-                                // Skip unparseable frames
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Process remaining buffer
-            if (buffer.trim()) {
-                const lines = buffer.trim().split("\n");
+            /** Process one complete SSE frame (delimited by \n\n) */
+            const processFrame = (frame: string) => {
+                const lines = frame.split("\n");
                 let eventType = "";
                 for (const line of lines) {
                     if (line.startsWith("event: ")) {
@@ -223,10 +170,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
                             } = JSON.parse(json);
                             appendText(chunk.text);
                         } catch {
-                            /* skip */
+                            // Skip unparseable frames
                         }
                     }
                 }
+            };
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                // Decode the chunk — stream:true handles partial multi-byte
+                // characters that may be split across chunk boundaries
+                buffer += decoder.decode(value, { stream: true });
+
+                // Split on SSE frame delimiter
+                const parts = buffer.split("\n\n");
+                // The last element may be an incomplete frame — keep it for next iteration
+                buffer = parts.pop() ?? "";
+
+                for (const part of parts) {
+                    if (part) processFrame(part);
+                }
+            }
+
+            // Flush the decoder — finalize any buffered multi-byte sequences
+            buffer += decoder.decode();
+
+            // Process any remaining complete frame
+            if (buffer.trim()) {
+                processFrame(buffer.trim());
             }
 
             set({ sending: false, controller: null });
