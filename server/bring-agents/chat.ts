@@ -1,25 +1,11 @@
 import { app } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
-import { EventEmitter } from "node:events";
 import { mkdirSync } from "node:fs";
 import { BUILTIN_AGENTS, type AgentDefinition } from "./byoa.ts";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-export interface ChatRequest {
-    /** Binary agent name to run (e.g. "claude", "codex") */
-    agentName: string;
-    /** The user prompt to send */
-    prompt: string;
-    /** Working directory for the agent process */
-    cwd?: string;
-    /** Timeout in ms (default: 120_000) */
-    timeout?: number;
-    /** AbortSignal for cancellation */
-    signal?: AbortSignal;
-}
 
 export interface ChatChunk {
     /** Text content of this chunk */
@@ -28,16 +14,19 @@ export interface ChatChunk {
     stream: "stdout" | "stderr";
 }
 
+export interface ChatCallbacks {
+    /** Called for each chunk of stdout/stderr output */
+    onChunk: (chunk: ChatChunk) => void;
+    /** Called when a fatal error occurs (process won't produce more output) */
+    onError: (error: Error) => void;
+    /** Called when the process has exited and all output has been delivered */
+    onDone: () => void;
+}
+
 // ============================================================================
-// Chat stream — async generator
+// Agent resolution
 // ============================================================================
 
-/**
- * Spawn a CLI coding agent with a one-shot prompt and yield stdout/stderr
- * chunks as they arrive.  Suitable for piping into an SSE response.
- *
- * Uses `-p <prompt>` argument (covers claude, kilocode, codex, etc.).
- */
 /**
  * Look up an agent by display name in the built-in registry and return its
  * definition plus the binary command to spawn.  Returns `null` if the name
@@ -48,148 +37,145 @@ function resolveAgent(agentName: string): {
     command: string;
 } | null {
     const nameLower = agentName.toLowerCase();
-    const def = BUILTIN_AGENTS.find(
-        (a) => a.name.toLowerCase() === nameLower,
-    );
+    const def = BUILTIN_AGENTS.find((a) => a.name.toLowerCase() === nameLower);
     if (!def || def.commands.length === 0) return null;
     return { definition: def, command: def.commands[0]! };
 }
 
-export async function* chatStream(req: ChatRequest): AsyncGenerator<ChatChunk> {
-    const { agentName, prompt, cwd, timeout = 120_000, signal } = req;
+// ============================================================================
+// Chat stream
+// ============================================================================
 
-    if (signal?.aborted) return;
+/**
+ * Spawn a CLI coding agent with a one-shot prompt and stream stdout/stderr
+ * chunks to the provided callbacks in real time.
+ *
+ * Returns an object with an `abort()` method to kill the child process.
+ */
+export function chatStream(
+    agentName: string,
+    prompt: string,
+    cwd: string | undefined,
+    callbacks: ChatCallbacks,
+    signal?: AbortSignal,
+): { abort: () => void } {
+    const { onChunk, onError, onDone } = callbacks;
 
     // --- Validate agentName against known registry ---
     const resolved = resolveAgent(agentName);
     if (!resolved) {
-        yield {
+        onChunk({
             text: `[Error] Unknown agent: "${agentName}". It is not in the recognized agent registry.`,
             stream: "stderr",
-        };
-        return;
+        });
+        onDone();
+        return { abort: () => {} };
     }
     const { command } = resolved;
 
-    const events = new EventEmitter();
-    const chunks: ChatChunk[] = [];
-    let done = false;
-    let error: Error | undefined;
-
-    const push = (chunk: ChatChunk) => {
-        chunks.push(chunk);
-        events.emit("chunk");
-    };
-
-    const finish = () => {
-        done = true;
-        events.emit("chunk");
-    };
-
-    const fail = (err: Error) => {
-        error = err;
-        done = true;
-        events.emit("chunk");
-    };
-
-    // Ensure workspace sessions directory exists
+    // --- Ensure workspace sessions directory exists ---
     const tempFolder = app.getPath("temp");
     const workspace = `${tempFolder}/sessions`;
 
     try {
         mkdirSync(workspace, { recursive: true });
     } catch (err) {
-        yield {
+        onChunk({
             text: `[Error] Failed to create workspace directory: ${(err as Error).message}`,
             stream: "stderr",
-        };
-        return;
+        });
+        onDone();
+        return { abort: () => {} };
     }
 
+    // --- Spawn the agent process ---
     let child: ChildProcess;
+    const timeout = 120_000;
 
     try {
-        child = spawn(
-            command,
-            ["-p", prompt, "--dangerously-skip-permissions"],
-            {
-                cwd: cwd ?? workspace,
-                stdio: ["ignore", "pipe", "pipe"],
-                env: { ...process.env },
-                timeout,
-                signal,
-            },
-        );
+        const args = [
+            "-p",
+            prompt,
+            "--verbose",
+            "--print",
+            "--output-format",
+            "stream-json",
+            "--dangerously-skip-permissions",
+        ];
+
+        child = spawn(command, args, {
+            cwd: cwd ?? workspace,
+            stdio: ["ignore", "pipe", "pipe"],
+            env: { ...process.env },
+            timeout,
+            signal,
+        });
     } catch (err) {
-        yield {
+        onChunk({
             text: `[Error] Failed to spawn ${command}: ${(err as Error).message}`,
             stream: "stderr",
-        };
-        return;
+        });
+        onDone();
+        return { abort: () => {} };
     }
 
-    // --- Register event handlers ---
+    let settled = false;
+
+    const done = () => {
+        if (settled) return;
+        settled = true;
+        onDone();
+    };
+
+    const error = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        onError(err);
+    };
+
+    // --- Register event handlers (call callbacks directly) ---
 
     child.stdout?.on("data", (chunk: Buffer) => {
         const text = chunk.toString();
         console.log(`[${command}:stdout]`, text);
-        push({ text, stream: "stdout" });
+        onChunk({ text, stream: "stdout" });
     });
 
     child.stderr?.on("data", (chunk: Buffer) => {
         const text = chunk.toString();
         console.log(`[${command}:stderr]`, text);
-        push({ text, stream: "stderr" });
+        onChunk({ text, stream: "stderr" });
     });
 
     child.on("close", (_code, _sig) => {
-        finish();
+        done();
     });
 
     child.on("error", (err: Error & { code?: string }) => {
         const code = err.code;
         if (code === "ENOENT") {
-            push({
+            onChunk({
                 text: `[Error] Command not found: ${command}. Is it installed and in your PATH?`,
                 stream: "stderr",
             });
-            finish(); // must signal done so the generator exits
+            done();
         } else if (code === "ETIMEDOUT" || code === "ABORT_ERR") {
-            push({
+            onChunk({
                 text: `[Error] ${command} timed out after ${timeout / 1000}s`,
                 stream: "stderr",
             });
-            finish(); // must signal done so the generator exits
+            done();
         } else {
-            fail(err);
+            error(err);
         }
     });
 
-    // --- Yield chunks as they arrive ---
-
-    while (!done || chunks.length > 0) {
-        if (chunks.length > 0) {
-            yield chunks.shift()!;
-        } else if (!done) {
-            // Wait for next chunk or completion
-            await new Promise<void>((r) => {
-                events.once("chunk", r);
-            });
-        }
-    }
-
-    // --- Report fatal error ---
-
-    if (error) {
-        yield {
-            text: `[Error] ${error.message}`,
-            stream: "stderr",
-        };
-    }
-
-    // --- Cleanup ---
-
-    if (child && !child.killed) {
-        child.kill("SIGKILL");
-    }
+    // --- Return abort handle ---
+    return {
+        abort: () => {
+            if (!child.killed) {
+                child.kill("SIGKILL");
+            }
+        },
+    };
 }

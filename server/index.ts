@@ -9,7 +9,7 @@ import {
     BUILTIN_AGENTS,
     type AgentDetectionResult,
 } from "./bring-agents/byoa.ts";
-import { chatStream, type ChatChunk } from "./bring-agents/chat.ts";
+import { chatStream } from "./bring-agents/chat.ts";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ============================================================================
@@ -138,35 +138,39 @@ function createServer({ win }: { win: BrowserWindow }) {
         });
 
         let aborted = false;
+        let settled = false;
 
         req.on("close", () => {
             aborted = true;
+            if (!settled) {
+                handle.abort();
+            }
         });
 
-        void (async () => {
-            try {
-                for await (const chunk of chatStream({
-                    agentName,
-                    prompt: message,
-                    cwd,
-                })) {
-                    if (aborted) break;
-                    const data: ChatChunk = chunk;
-                    res.write(`data: ${JSON.stringify(data)}\n\n`);
-                }
-                if (!aborted) {
-                    res.write("event: done\ndata: {}\n\n");
-                }
-            } catch (err) {
-                if (!aborted) {
-                    res.write(
-                        `event: error\ndata: ${JSON.stringify({ message: (err as Error).message })}\n\n`,
-                    );
-                }
-            } finally {
-                if (!aborted) res.end();
-            }
-        })();
+        const end = () => {
+            if (settled) return;
+            settled = true;
+            if (!aborted) res.end();
+        };
+
+        const handle = chatStream(agentName, message, cwd, {
+            onChunk: (chunk) => {
+                if (aborted) return;
+                res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+            },
+            onError: (err) => {
+                if (aborted) return;
+                res.write(
+                    `event: error\ndata: ${JSON.stringify({ message: err.message })}\n\n`,
+                );
+                end();
+            },
+            onDone: () => {
+                if (aborted) return;
+                res.write("event: done\ndata: {}\n\n");
+                end();
+            },
+        });
     });
     return app;
 }
