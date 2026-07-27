@@ -182,7 +182,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
                 // Decode the chunk — stream:true handles partial multi-byte
                 // characters that may be split across chunk boundaries
-                buffer += decoder.decode(value, { stream: true });
+                buffer += decoder.decode(value);
+
+                console.log(buffer);
 
                 // Split on SSE frame delimiter
                 const parts = buffer.split("\n\n");
