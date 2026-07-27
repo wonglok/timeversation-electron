@@ -82,26 +82,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         homepage: "https://github.com/openai/codex",
         icon: CodexColor,
     },
-    {
-        name: "Qwen Code",
-        slug: "qwen-code",
-        cliName: "qwen",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Alibaba's Qwen-powered coding CLI agent",
-        homepage: "https://github.com/QwenLM/qwen-code",
-        icon: QwenColor,
-    },
-    {
-        name: "OpenCode",
-        slug: "opencode",
-        cliName: "opencode",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Open-source terminal coding agent with MCP support",
-        homepage: "https://github.com/opencode-ai/opencode",
-        icon: OpenCodeIcon,
-    },
+
     {
         name: "Kimi Code",
         slug: "kimi-code",
@@ -112,6 +93,29 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         homepage: "https://github.com/MoonshotAI/kimi-code",
         icon: KimiColor,
     },
+
+    {
+        name: "Qwen Code",
+        slug: "qwen-code",
+        cliName: "qwen",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Alibaba's Qwen-powered coding CLI agent",
+        homepage: "https://github.com/QwenLM/qwen-code",
+        icon: QwenColor,
+    },
+
+    {
+        name: "OpenCode",
+        slug: "opencode",
+        cliName: "opencode",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Open-source terminal coding agent with MCP support",
+        homepage: "https://github.com/opencode-ai/opencode",
+        icon: OpenCodeIcon,
+    },
+
     // {
     //     name: "Gemini CLI",
     //     slug: "gemini-cli",

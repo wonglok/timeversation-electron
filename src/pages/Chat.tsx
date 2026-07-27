@@ -201,7 +201,14 @@ export function Chat() {
                         last.content = last.content
                             ? last.content + "\n" + chunk
                             : chunk;
+
+                        try {
+                            console.log(JSON.parse(chunk));
+                        } catch (err) {
+                            console.log(err);
+                        }
                     }
+
                     return updated;
                 });
             },
