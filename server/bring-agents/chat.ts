@@ -1,5 +1,4 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdirSync } from "node:fs";
 import { BUILTIN_AGENTS, type AgentDefinition } from "./byoa.ts";
 
 // ============================================================================
@@ -128,10 +127,6 @@ export function chatStream(
         const text = chunk.toString();
         console.log(`[${command}:stdout]`, text);
         onChunk({ text, stream: "stdout" });
-
-        if (child.stdout?.closed) {
-            done();
-        }
     });
 
     child.stderr?.on("data", (chunk: Buffer) => {
@@ -161,10 +156,6 @@ export function chatStream(
         } else {
             error(err);
         }
-
-        /*
-        
-        */
     });
 
     // --- Return abort handle ---
