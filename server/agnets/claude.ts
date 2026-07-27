@@ -1,5 +1,5 @@
+export const cmd = "claude";
 export const args = [
-    "claude",
     "-p",
     "__REPLACE_ME_WITH_PROMPT__",
     "--print",

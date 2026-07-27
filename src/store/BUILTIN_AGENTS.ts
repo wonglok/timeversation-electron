@@ -12,12 +12,12 @@ import KimiColor from "@lobehub/icons/es/Kimi/components/Color";
 import GeminiCLIColor from "@lobehub/icons/es/GeminiCLI/components/Color";
 
 // Monochrome brand icons (no Color variant in package)
-import KiloCodeIcon from "@lobehub/icons/es/KiloCode";
 import OpenCodeIcon from "@lobehub/icons/es/OpenCode";
 import PiIcon from "@lobehub/icons/es/Pi";
-import GithubCopilotIcon from "@lobehub/icons/es/GithubCopilot";
 import CursorIcon from "@lobehub/icons/es/Cursor";
-import ClineIcon from "@lobehub/icons/es/Cline";
+// import ClineIcon from "@lobehub/icons/es/Cline";
+// import GithubCopilotIcon from "@lobehub/icons/es/GithubCopilot";
+// import KiloCodeIcon from "@lobehub/icons/es/KiloCode";
 
 // ============================================================================
 // Types
