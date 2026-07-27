@@ -1,12 +1,14 @@
 import type { SVGProps, ComponentType } from "react";
-import ClaudeCode from "@lobehub/icons/es/ClaudeCode";
-import Codex from "@lobehub/icons/es/Codex";
-import Qwen from "@lobehub/icons/es/Qwen";
+// Colorful brand icons
+import ClaudeCode from "@lobehub/icons/es/ClaudeCode/components/Color";
+import Codex from "@lobehub/icons/es/Codex/components/Color";
+import Qwen from "@lobehub/icons/es/Qwen/components/Color";
+import Kimi from "@lobehub/icons/es/Kimi/components/Color";
+import GeminiCLI from "@lobehub/icons/es/GeminiCLI/components/Color";
+// Monochrome brand icons (no Color variant in package)
 import KiloCode from "@lobehub/icons/es/KiloCode";
 import OpenCode from "@lobehub/icons/es/OpenCode";
-import Kimi from "@lobehub/icons/es/Kimi";
 import Pi from "@lobehub/icons/es/Pi";
-import GeminiCLI from "@lobehub/icons/es/GeminiCLI";
 import GithubCopilot from "@lobehub/icons/es/GithubCopilot";
 import Cursor from "@lobehub/icons/es/Cursor";
 import Windsurf from "@lobehub/icons/es/Windsurf";
