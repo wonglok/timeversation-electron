@@ -35,7 +35,7 @@ function createWindow() {
             scrollBounce: true,
         },
         x: 150,
-        y: 500,
+        y: 1000,
         width: 1000,
         height: 700,
     });
