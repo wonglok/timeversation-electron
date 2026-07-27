@@ -5,8 +5,6 @@ import { fileURLToPath } from "node:url";
 import { BrowserWindow } from "electron";
 import { BringYourOwnAgent } from "./bring-agents/byoa.ts";
 import { chatStream } from "./bring-agents/chat.ts";
-import { mkdirSync } from "node:fs";
-import { app as electronApp } from "electron";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -153,29 +151,11 @@ function createServer({ win }: { win: BrowserWindow }) {
         let aborted = false;
         let settled = false;
 
-        req.on("close", () => {
-            aborted = true;
-            if (!settled) {
-                handle.abort();
-            }
-        });
-
         const end = () => {
             if (settled) return;
             settled = true;
             if (!aborted) res.end();
         };
-
-        // --- Ensure workspace sessions directory exists ---
-        const tempFolder = electronApp.getPath("temp");
-        const workspace = `${tempFolder}/sessions`;
-
-        try {
-            mkdirSync(workspace, { recursive: true });
-        } catch (err) {
-            console.log(err);
-            return { abort: () => {} };
-        }
 
         const handle = chatStream(agentName, message, cwd, {
             onChunk: (chunk) => {
@@ -192,6 +172,13 @@ function createServer({ win }: { win: BrowserWindow }) {
                 res.write(sseEvent("done", {}));
                 end();
             },
+        });
+
+        req.on("close", () => {
+            aborted = true;
+            if (!settled) {
+                handle.abort();
+            }
         });
     });
     return app;

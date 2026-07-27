@@ -45,6 +45,17 @@ function resolveAgent(agentName: string): {
 // Chat stream
 // ============================================================================
 
+const CMDArgs: Record<string, (opts: { prompt: string }) => string[]> = {
+    claude: ({ prompt }) => [
+        "-p",
+        prompt,
+        "--verbose",
+        "--output-format",
+        "stream-json",
+        "--dangerously-skip-permissions",
+    ],
+};
+
 /**
  * Spawn a CLI coding agent with a one-shot prompt and stream stdout/stderr
  * chunks to the provided callbacks in real time.
@@ -74,26 +85,18 @@ export function chatStream(
 
     // --- Spawn the agent process ---
     let child: ChildProcess;
-    // const timeout = 120_000;
+    const timeout = 120_000;
 
     try {
-        const args = [
-            "-p",
-            JSON.stringify(prompt),
-            "--print",
-            "--output-format",
-            "stream-json",
-            "--dangerously-skip-permissions",
-            "--verbose",
-        ];
-
-        console.log(args);
+        const args = CMDArgs[command]
+            ? CMDArgs[command]({ prompt })
+            : ["-p", prompt, "--dangerously-skip-permissions"];
 
         child = spawn(command, args, {
             cwd: cwd,
             stdio: ["ignore", "pipe", "pipe"],
             env: { ...process.env },
-            // timeout,
+            timeout,
             signal,
         });
     } catch (err) {
@@ -125,16 +128,16 @@ export function chatStream(
         const text = chunk.toString();
         console.log(`[${command}:stdout]`, text);
         onChunk({ text, stream: "stdout" });
+
+        if (child.stdout?.closed) {
+            done();
+        }
     });
 
     child.stderr?.on("data", (chunk: Buffer) => {
         const text = chunk.toString();
         console.log(`[${command}:stderr]`, text);
         onChunk({ text, stream: "stderr" });
-    });
-
-    child.on("exit", (_code, _sig) => {
-        done();
     });
 
     child.on("close", (_code, _sig) => {
@@ -149,18 +152,18 @@ export function chatStream(
                 stream: "stderr",
             });
             done();
-        } else {
-            error(err);
-        }
-
-        /*
-         else if (code === "ETIMEDOUT" || code === "ABORT_ERR") {
+        } else if (code === "ETIMEDOUT" || code === "ABORT_ERR") {
             onChunk({
                 text: `[Error] ${command} timed out after ${timeout / 1000}s`,
                 stream: "stderr",
             });
             done();
-        } 
+        } else {
+            error(err);
+        }
+
+        /*
+        
         */
     });
 
