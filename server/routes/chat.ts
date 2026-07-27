@@ -43,16 +43,15 @@ router.post("/send", (req, res) => {
 
     const config = AGENT_CONFIGS[slug];
     if (!config) {
-        res.status(404).json({
-            error: `No agent config found for slug: ${slug}`,
-        });
+        res.status(404).json({ error: `No agent config found for slug: ${slug}` });
         return;
     }
 
     try {
+        // Inject `--` before the user message to prevent flag smuggling
         const resolvedArgs = config.args.map((arg) =>
-            arg === "__REPLACE_ME_WITH_PROMPT__" ? message : arg,
-        );
+            arg === "__REPLACE_ME_WITH_PROMPT__" ? ["--", message] : arg,
+        ).flat();
 
         const stdout = execFileSync(config.cmd, resolvedArgs, {
             encoding: "utf-8",
@@ -62,9 +61,9 @@ router.post("/send", (req, res) => {
 
         res.json({ reply: stdout.trim() || "(no output)" });
     } catch (err: any) {
-        const errorText =
-            err.stderr || err.stdout || err.message || "Unknown error";
-        res.json({ reply: `Error: ${errorText}` });
+        // Log full details server-side; return generic error to client
+        console.error("[chat] agent execution failed:", err.stderr || err.stdout || err.message);
+        res.json({ reply: "Error: agent execution failed. Check the server logs for details." });
     }
 });
 
