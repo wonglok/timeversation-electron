@@ -9,9 +9,25 @@ import { Icon, resolveIconName } from "../components/icons.tsx";
 // Sub-components
 // ============================================================================
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+function LoadingIndicator() {
+    return (
+        <div className="flex items-center gap-1.5 py-0.5">
+            <span className="loading-dot" />
+            <span className="loading-dot" style={{ animationDelay: "0.2s" }} />
+            <span className="loading-dot" style={{ animationDelay: "0.4s" }} />
+        </div>
+    );
+}
+
+function MessageBubble({
+    msg,
+    sending,
+}: {
+    msg: ChatMessage;
+    sending: boolean;
+}) {
     const isUser = msg.role === "user";
-    const isStreaming = !isUser && msg.content === "";
+    const isEmpty = msg.content === "";
 
     return (
         <div
@@ -24,8 +40,14 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                         : ""
                 }`}
             >
-                {isStreaming ? (
-                    <span className="inline-block w-2 h-4 bg-[var(--primary)] animate-pulse rounded-sm" />
+                {!isUser && isEmpty ? (
+                    sending ? (
+                        <LoadingIndicator />
+                    ) : (
+                        <span className="text-sm text-[var(--text-dim)] italic">
+                            (No response)
+                        </span>
+                    )
                 ) : (
                     <pre className="text-sm text-[var(--text-primary)] whitespace-pre-wrap font-sans m-0 leading-relaxed">
                         {msg.content}
@@ -293,7 +315,11 @@ export function Chat() {
                     {messages.length === 0 && <EmptyChat />}
 
                     {messages.map((msg) => (
-                        <MessageBubble key={msg.id} msg={msg} />
+                        <MessageBubble
+                            key={msg.id}
+                            msg={msg}
+                            sending={sending}
+                        />
                     ))}
                     <div ref={messagesEndRef} />
 

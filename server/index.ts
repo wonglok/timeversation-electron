@@ -104,16 +104,28 @@ function createServer({ win }: { win: BrowserWindow }) {
 
     // --- Chat: send a prompt to an agent (SSE stream) ---
     app.post("/api/chat/send", (req, res) => {
-        const { command, message, cwd } = req.body as {
-            command?: string;
+        const { agentName, message, cwd } = req.body as {
+            agentName?: string;
             message?: string;
             cwd?: string;
         };
 
-        if (!command || !message) {
+        if (!agentName || !message) {
             res.status(400).json({
                 error: "Missing required fields",
-                message: "`command` and `message` are required.",
+                message: "`agentName` and `message` are required.",
+            });
+            return;
+        }
+
+        // --- Validate agentName against the known registry ---
+        const agentDef = byoa.agents.find(
+            (a) => a.name.toLowerCase() === agentName.toLowerCase(),
+        );
+        if (!agentDef) {
+            res.status(400).json({
+                error: "Unknown agent",
+                message: `"${agentName}" is not a recognized agent.`,
             });
             return;
         }
@@ -134,7 +146,7 @@ function createServer({ win }: { win: BrowserWindow }) {
         void (async () => {
             try {
                 for await (const chunk of chatStream({
-                    command,
+                    agentName,
                     prompt: message,
                     cwd,
                 })) {

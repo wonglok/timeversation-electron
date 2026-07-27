@@ -273,6 +273,27 @@ h1, h2, h3 {
     animation: pulse-ring 2.5s ease-out infinite;
 }
 
+/* ---- Loading Dot ---- */
+@keyframes loading-float {
+    0%, 100% {
+        opacity: 0.3;
+        transform: translateY(0);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-6px);
+    }
+}
+
+.loading-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: loading-float 0.8s ease-in-out infinite;
+}
+
 /* ---- Divider ---- */
 .hr-glow {
     border: none;

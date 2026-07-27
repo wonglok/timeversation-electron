@@ -24,4 +24,4 @@ must use svg for icon
 
 # Planning
 
-must plan for parallel exection with as many sub agent as possible.
+must plan properly before exection
