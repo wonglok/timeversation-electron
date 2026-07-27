@@ -67,10 +67,7 @@ export function Chat() {
         } catch {
             setMessages((prev) => [
                 ...prev,
-                {
-                    role: "agent",
-                    content: "Failed to reach agent. Is the server running?",
-                },
+                { role: "agent", content: "Failed to reach agent. Is the server running?" },
             ]);
         } finally {
             setSending(false);
