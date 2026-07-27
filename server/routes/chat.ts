@@ -35,13 +35,11 @@ router.post("/stream", (req, res) => {
             message,
         });
     } else if (message && slug === "openai-codex-cli") {
-        //
         handleCodex({
             req,
             res,
             message,
         });
-        //
     }
 });
 

@@ -84,28 +84,6 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
 
     {
-        name: "Kimi Code",
-        slug: "kimi-code",
-        cliName: "kimi",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Moonshot AI's Kimi-powered coding agent",
-        homepage: "https://github.com/MoonshotAI/kimi-code",
-        icon: KimiColor,
-    },
-
-    {
-        name: "Qwen Code",
-        slug: "qwen-code",
-        cliName: "qwen",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Alibaba's Qwen-powered coding CLI agent",
-        homepage: "https://github.com/QwenLM/qwen-code",
-        icon: QwenColor,
-    },
-
-    {
         name: "OpenCode",
         slug: "opencode",
         cliName: "opencode",
@@ -117,6 +95,28 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
 
     // {
+    //     name: "Kimi Code",
+    //     slug: "kimi-code",
+    //     cliName: "kimi",
+    //     detectionArgs: ["--version"],
+    //     versionRegex: /(\d+\.\d+\.\d+)/,
+    //     description: "Moonshot AI's Kimi-powered coding agent",
+    //     homepage: "https://github.com/MoonshotAI/kimi-code",
+    //     icon: KimiColor,
+    // },
+
+    // {
+    //     name: "Qwen Code",
+    //     slug: "qwen-code",
+    //     cliName: "qwen",
+    //     detectionArgs: ["--version"],
+    //     versionRegex: /(\d+\.\d+\.\d+)/,
+    //     description: "Alibaba's Qwen-powered coding CLI agent",
+    //     homepage: "https://github.com/QwenLM/qwen-code",
+    //     icon: QwenColor,
+    // },
+
+    // {
     //     name: "Gemini CLI",
     //     slug: "gemini-cli",
     //     cliName: "gemini",
@@ -126,27 +126,27 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     homepage: "https://github.com/google-gemini/gemini-cli",
     //     icon: GeminiCLIColor,
     // },
-    {
-        name: "Cursor CLI",
-        slug: "cursor-cli",
-        cliName: "cursor",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Cursor AI editor CLI tools",
-        homepage: "https://cursor.com",
-        icon: CursorIcon,
-    },
+    // {
+    //     name: "Cursor CLI",
+    //     slug: "cursor-cli",
+    //     cliName: "cursor",
+    //     detectionArgs: ["--version"],
+    //     versionRegex: /(\d+\.\d+\.\d+)/,
+    //     description: "Cursor AI editor CLI tools",
+    //     homepage: "https://cursor.com",
+    //     icon: CursorIcon,
+    // },
 
-    {
-        name: "Pi Coding Agent",
-        slug: "pi-coding-agent",
-        cliName: "pi",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Pi AI coding assistant CLI",
-        homepage: "https://github.com/pi-ai/pi-coding-agent",
-        icon: PiIcon,
-    },
+    // {
+    //     name: "Pi Coding Agent",
+    //     slug: "pi-coding-agent",
+    //     cliName: "pi",
+    //     detectionArgs: ["--version"],
+    //     versionRegex: /(\d+\.\d+\.\d+)/,
+    //     description: "Pi AI coding assistant CLI",
+    //     homepage: "https://github.com/pi-ai/pi-coding-agent",
+    //     icon: PiIcon,
+    // },
 
     // {
     //     name: "Kilo Code",
