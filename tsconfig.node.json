@@ -2,7 +2,7 @@
     "compilerOptions": {
         "target": "es2022",
         "lib": ["es2022"],
-        "module": "node16",
+        "module": "es2022",
         "skipLibCheck": true,
 
         "esModuleInterop": true,
@@ -13,10 +13,13 @@
         "noUncheckedIndexedAccess": true,
         "moduleDetection": "force",
 
-        "moduleResolution": "node16",
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
         "resolveJsonModule": false,
         "isolatedModules": true,
         "composite": true,
+        "emitDeclarationOnly": true,
+        "declaration": true,
 
         "strict": true,
         "strictNullChecks": true,
@@ -25,7 +28,5 @@
         "noImplicitThis": true,
         "noImplicitOverride": true
     },
-    "include": [
-        "vite.config.ts"
-    ]
+    "include": ["vite.config.ts", "server"]
 }

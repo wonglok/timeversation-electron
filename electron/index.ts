@@ -34,6 +34,8 @@ function createWindow() {
             preload: path.join(__dirname, "preload.mjs"),
             scrollBounce: true,
         },
+        x: 150,
+        y: 500,
         width: 1000,
         height: 700,
     });

@@ -4,14 +4,11 @@ import { defineConfig } from "vite";
 import electron from "vite-plugin-electron/simple";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 // These modules won't be bundled as part of the Vite build of the Electron (main) side,
 // but they'll be included in the final Electron app build inside the asar file.
 // Performance and efficiency wise, this is absolutely fine and has no real drawbacks
 const electronExternalModules = ["node-llama-cpp", "lifecycle-utils"];
-
 // https://vitejs.dev/config/
 export default defineConfig({
     esbuild: {
@@ -39,7 +36,6 @@ export default defineConfig({
                 onstart({ startup }) {
                     if (process.env["ENABLE_INSPECT"] === "true")
                         return startup([".", "--inspect"]);
-
                     return startup(["."]);
                 },
                 vite: {
@@ -66,11 +62,10 @@ export default defineConfig({
             // Polyfill the Electron and Node.js API for Renderer process.
             // If you want use Node.js in Renderer process, the `nodeIntegration` needs to be enabled in the Main process.
             // See 👉 https://github.com/electron-vite/vite-plugin-electron-renderer
-            renderer:
-                process.env.NODE_ENV === "test"
-                    ? // https://github.com/electron-vite/vite-plugin-electron-renderer/issues/78#issuecomment-2053600808
-                      undefined
-                    : {},
+            renderer: process.env.NODE_ENV === "test"
+                ? // https://github.com/electron-vite/vite-plugin-electron-renderer/issues/78#issuecomment-2053600808
+                    undefined
+                : {},
         }),
     ],
 });

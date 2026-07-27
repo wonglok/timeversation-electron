@@ -2,9 +2,11 @@ import express from "express";
 import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { existsSync, statSync } from "node:fs";
 import { BrowserWindow } from "electron";
 import { BringYourOwnAgent } from "./bring-agents/byoa.ts";
-import { chatStream } from "./bring-agents/chat.ts";
+// import { chatStream } from "./bring-agents/chat.ts";
+import { runClaudePrompt } from "./bring-agents/agents/claude.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -129,9 +131,10 @@ function createServer({ win }: { win: BrowserWindow }) {
             return;
         }
 
-        // --- Validate agentName against the known registry ---
+        // --- Validate agentName against the known registry (name or slug) ---
+        const nameLower = agentName.toLowerCase();
         const agentDef = byoa.agents.find(
-            (a) => a.name.toLowerCase() === agentName.toLowerCase(),
+            (a) => a.slug === nameLower || a.name.toLowerCase() === nameLower,
         );
         if (!agentDef) {
             res.status(400).json({
@@ -157,29 +160,29 @@ function createServer({ win }: { win: BrowserWindow }) {
             if (!aborted) res.end();
         };
 
-        const handle = chatStream(agentName, message, cwd, {
-            onChunk: (chunk) => {
-                if (aborted) return;
-                res.write(sseData(chunk));
-            },
-            onError: (err) => {
-                if (aborted) return;
-                res.write(sseEvent("error", { message: err.message }));
-                end();
-            },
-            onDone: () => {
-                if (aborted) return;
+        // --- Validate & sanitize working directory ---
+        let safeCwd: string | undefined;
+        if (cwd) {
+            safeCwd = path.resolve(cwd);
+            // Reject paths that don't exist or aren't directories
+            if (!existsSync(safeCwd) || !statSync(safeCwd).isDirectory()) {
+                res.writeHead(200, {
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache",
+                    Connection: "keep-alive",
+                    "X-Accel-Buffering": "no",
+                });
+                res.write(
+                    sseData({
+                        text: `[Error] Invalid working directory: "${cwd}". The path must exist and be a directory.`,
+                        stream: "stderr",
+                    }),
+                );
                 res.write(sseEvent("done", {}));
-                end();
-            },
-        });
-
-        req.on("close", () => {
-            aborted = true;
-            if (!settled) {
-                handle.abort();
+                res.end();
+                return;
             }
-        });
+        }
     });
     return app;
 }

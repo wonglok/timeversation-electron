@@ -30,12 +30,16 @@ export interface ChatCallbacks {
  * definition plus the binary command to spawn.  Returns `null` if the name
  * doesn't match a known agent.
  */
-function resolveAgent(agentName: string): {
+function resolveAgent(identifier: string): {
     definition: AgentDefinition;
     command: string;
 } | null {
-    const nameLower = agentName.toLowerCase();
-    const def = BUILTIN_AGENTS.find((a) => a.name.toLowerCase() === nameLower);
+    const idLower = identifier.toLowerCase();
+    const def = BUILTIN_AGENTS.find(
+        (a) =>
+            a.slug === idLower ||
+            a.name.toLowerCase() === idLower,
+    );
     if (!def || def.commands.length === 0) return null;
     return { definition: def, command: def.commands[0]! };
 }

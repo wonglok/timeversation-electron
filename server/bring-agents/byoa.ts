@@ -8,6 +8,8 @@ import { spawn, type ChildProcess } from "node:child_process";
 export interface AgentDefinition {
     /** Human-readable display name */
     name: string;
+    /** URL-friendly unique slug (e.g. "claude-code") */
+    slug: string;
     /** CLI command(s) to try — first that resolves wins */
     commands: string[];
     /** Args to pass for version / detection (e.g. ["--version"]) */
@@ -68,6 +70,7 @@ export interface ScanProgressEvent {
 export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "Claude Code",
+        slug: "claude-code",
         commands: ["claude"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -77,6 +80,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
     {
         name: "Kilo Code",
+        slug: "kilo-code",
         commands: ["kilocode"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -86,6 +90,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
     {
         name: "OpenAI Codex CLI",
+        slug: "openai-codex-cli",
         commands: ["codex"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -95,6 +100,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
     {
         name: "Qwen Code",
+        slug: "qwen-code",
         commands: ["qwencode", "qwen-code", "qwen"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -104,6 +110,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
     {
         name: "OpenCode",
+        slug: "opencode",
         commands: ["opencode"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -113,6 +120,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
     {
         name: "Kimi Code",
+        slug: "kimi-code",
         commands: ["kimicode", "kimi-code", "kimi"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -122,6 +130,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
     {
         name: "Pi Coding Agent",
+        slug: "pi-coding-agent",
         commands: ["pi", "pi-coding-agent", "pi-agent"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -131,6 +140,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
     {
         name: "Gemini CLI",
+        slug: "gemini-cli",
         commands: ["gemini"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -139,26 +149,8 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         icon: "gemini",
     },
     {
-        name: "Aider",
-        commands: ["aider"],
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description:
-            "AI pair programming in your terminal with multi-model support",
-        homepage: "https://github.com/Aider-AI/aider",
-        icon: "handshake",
-    },
-    {
-        name: "Amazon Q Developer CLI",
-        commands: ["q"],
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "AWS Q Developer command-line coding assistant",
-        homepage: "https://aws.amazon.com/q/developer/",
-        icon: "cloud",
-    },
-    {
         name: "Cursor CLI",
+        slug: "cursor-cli",
         commands: ["cursor"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -167,16 +159,8 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         icon: "cursor",
     },
     {
-        name: "Windsurf CLI",
-        commands: ["windsurf"],
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Codeium's Windsurf IDE command-line interface",
-        homepage: "https://codeium.com/windsurf",
-        icon: "windsurf",
-    },
-    {
         name: "GitHub Copilot (gh extension)",
+        slug: "github-copilot",
         commands: ["gh"],
         detectionArgs: ["copilot", "--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
@@ -185,49 +169,14 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         icon: "copilot",
     },
     {
-        name: "Tabby",
-        commands: ["tabby"],
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Self-hosted AI coding assistant with open-source models",
-        homepage: "https://github.com/TabbyML/tabby",
-        icon: "cat",
-    },
-    {
         name: "Cline CLI",
+        slug: "cline-cli",
         commands: ["cline"],
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Cline's autonomous coding agent CLI",
         homepage: "https://github.com/cline/cline",
         icon: "cline",
-    },
-    {
-        name: "Roo Code",
-        commands: ["roo-code", "roocode"],
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Roo Code AI coding assistant CLI",
-        homepage: "https://github.com/RooVetGit/Roo-Code",
-        icon: "roocode",
-    },
-    {
-        name: "Node.js (baseline)",
-        commands: ["node"],
-        detectionArgs: ["--version"],
-        versionRegex: /^v(\d+\.\d+\.\d+)/m,
-        description: "Node.js JavaScript runtime (baseline check)",
-        homepage: "https://nodejs.org",
-        icon: "heart",
-    },
-    {
-        name: "Bun (baseline)",
-        commands: ["bun"],
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Bun all-in-one JavaScript runtime & toolkit",
-        homepage: "https://bun.sh",
-        icon: "package",
     },
 ];
 
