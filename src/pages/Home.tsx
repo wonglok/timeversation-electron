@@ -11,6 +11,8 @@ import {
 
 const API_BASE = "http://localhost:8390";
 
+//
+
 export function Home() {
     const navigate = useNavigate();
     const [installed, setInstalled] = useState<Record<string, boolean>>({});
@@ -73,7 +75,9 @@ export function Home() {
                                 }
                                 onClick={
                                     isInstalled
-                                        ? () => navigate(`/chat/${agent.slug}`)
+                                        ? () => {
+                                              navigate(`/chat/${agent.slug}`);
+                                          }
                                         : undefined
                                 }
                                 className={`glass-card relative flex flex-col items-center gap-2.5 px-4 py-5 transition-all duration-300 ${

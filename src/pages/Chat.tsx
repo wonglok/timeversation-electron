@@ -2,15 +2,23 @@
 // Chat page — converse with a specific CLI agent via SSE streaming
 // ============================================================================
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { BUILTIN_AGENTS } from "../store/BUILTIN_AGENTS";
+import {
+    AcpBubble,
+    LoadingBubble,
+    EmptyChat,
+    ResultFooter,
+    groupBubbles,
+} from "../components/MessageBubble/MessageBubble";
+import type { Bubble } from "../components/MessageBubble/types";
 
 const API_BASE = "http://localhost:8390";
 
-interface Message {
-    role: "user" | "agent";
-    content: string;
+let _bubbleId = 0;
+function nextId(): string {
+    return `b-${++_bubbleId}`;
 }
 
 let sessionID = `${crypto.randomUUID()}`;
@@ -20,18 +28,18 @@ export function Chat() {
     const navigate = useNavigate();
     const agent = BUILTIN_AGENTS.find((a) => a.slug === slug);
 
-    const [messages, setMessages] = useState<Message[]>([]);
+    const [bubbles, setBubbles] = useState<Bubble[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
 
-    // Auto-scroll to bottom when messages change
+    // Auto-scroll to bottom when bubbles change
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages]);
+    }, [bubbles]);
 
     // Clean up any in-flight stream on unmount
     useEffect(() => {
@@ -54,13 +62,152 @@ export function Chat() {
 
     const IconComponent = agent.icon;
 
+    // Track the current turn's groupId so consecutive text blocks merge
+    const groupRef = useRef<string>("");
+
     // ------------------------------------------------------------------
-    // SSE stream consumer (with TextDecoder for proper UTF-8 streaming)
+    // Append a bubble — merges consecutive text blocks in the same group
+    // ------------------------------------------------------------------
+    const appendBubble = useCallback(
+        (
+            kind: Bubble["kind"],
+            opts: Partial<Omit<Bubble, "id" | "kind" | "groupId">>,
+        ) => {
+            setBubbles((prev) => {
+                // Merge consecutive "text" bubbles in the same group
+                if (kind === "text" && opts.text && groupRef.current) {
+                    const last = prev[prev.length - 1];
+                    if (
+                        last &&
+                        last.groupId === groupRef.current &&
+                        last.kind === "text"
+                    ) {
+                        const updated = [...prev];
+                        updated[prev.length - 1] = {
+                            ...last,
+                            text: last.text! + opts.text,
+                        };
+                        return updated;
+                    }
+                }
+
+                const bubble: Bubble = {
+                    id: nextId(),
+                    kind,
+                    groupId: groupRef.current,
+                    ...opts,
+                } as Bubble;
+                return [...prev, bubble];
+            });
+        },
+        [],
+    );
+
+    // ------------------------------------------------------------------
+    // Parse a single NDJSON line into Bubble(s)
+    // ------------------------------------------------------------------
+    function parseAcpLine(line: string): void {
+        if (!line.trim()) return;
+
+        // console.log(line);
+        line = line.trim().replace("data: ", "").replace("event: ", "");
+
+        if (line === ":ok") {
+            return;
+        }
+        if (line === "[DONE]") {
+            return;
+        }
+
+        let parsed: any;
+        try {
+            parsed = JSON.parse(line);
+        } catch {
+            // Non-JSON — emit as raw text
+            appendBubble("text", { text: line });
+            return;
+        }
+
+        if (!parsed || typeof parsed !== "object" || !parsed.type) {
+            appendBubble("text", { text: line });
+            return;
+        }
+
+        switch (parsed.type) {
+            case "system":
+                switch (parsed.subtype) {
+                    case "init":
+                        appendBubble("system", {
+                            systemSubtype: "init",
+                            systemDetail: parsed.model
+                                ? `${parsed.model} · ${parsed.tools?.length ?? 0} tools`
+                                : `${parsed.tools?.length ?? 0} tools available`,
+                        });
+                        break;
+                    case "hook_response":
+                        if (parsed.stderr) {
+                            appendBubble("system", {
+                                systemSubtype: "hook",
+                                systemDetail: `${parsed.hook_name ?? "hook"} finished`,
+                                text: parsed.stderr,
+                            });
+                        }
+                        break;
+                    case "hook_started":
+                    case "hook_progress":
+                    case "thinking_tokens":
+                        // Too noisy for chat UI — skip
+                        break;
+                }
+                break;
+
+            case "assistant": {
+                const blocks = parsed.message?.content;
+                if (!Array.isArray(blocks)) break;
+                for (const block of blocks) {
+                    switch (block.type) {
+                        case "thinking":
+                            appendBubble("thinking", {
+                                text: block.thinking ?? "",
+                            });
+                            break;
+                        case "text":
+                            appendBubble("text", { text: block.text ?? "" });
+                            break;
+                        case "tool_use":
+                            appendBubble("tool_use", {
+                                toolName: block.name ?? "unknown",
+                                toolInput: block.input,
+                            });
+                            break;
+                    }
+                }
+                break;
+            }
+
+            case "result":
+                if (parsed.subtype === "success") {
+                    appendBubble("result", {
+                        usage: parsed.usage,
+                        cost: parsed.total_cost_usd,
+                        durationMs: parsed.duration_ms,
+                    });
+                } else if (parsed.is_error) {
+                    appendBubble("system", {
+                        systemSubtype: "error",
+                        text: parsed.result ?? "Unknown error",
+                    });
+                }
+                break;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // SSE stream consumer
     // ------------------------------------------------------------------
     async function streamAgentReply(
         slug: string,
         message: string,
-        onChunk: (text: string) => void,
         onDone: () => void,
         onError: (msg: string) => void,
         signal: AbortSignal,
@@ -93,78 +240,23 @@ export function Chat() {
                 const { value, done } = await reader.read();
                 if (done) break;
 
-                // Decode incrementally so split multi-byte UTF-8 codepoints are
-                // handled correctly across chunk boundaries.
                 buffer += decoder.decode(value, { stream: true });
 
-                // SSE frames are separated by double-CRLF (or double-LF as a
-                // lenient fallback).  The server emits `\r\n\r\n` so we match that
-                // first, then fall back to `\n\n`.
-                const delim = buffer.includes("\r\n\r\n") ? "\r\n\r\n" : "\n\n";
-                const parts = buffer.split(delim);
-                // The last element is an incomplete frame; keep it in the buffer.
+                // Split on LF for NDJSON (the server sends NDJSON via SSE)
+                const parts = buffer.split("\n");
                 buffer = parts.pop() ?? "";
 
-                for (const part of parts) {
-                    const raw = part.trim();
-                    if (!raw) continue;
-
-                    // -- Parse the SSE frame --
-                    let eventType = "message";
-                    const dataLines: string[] = [];
-
-                    for (const line of raw.split(/\r?\n/)) {
-                        if (line.startsWith("event:")) {
-                            eventType = line.slice(6).trim();
-                        } else if (line.startsWith("data:")) {
-                            // Rejoin consecutive `data:` lines with \n — the
-                            // server emits multi-line payloads this way.
-                            dataLines.push(line.slice(5).replace(/^ /, ""));
-                        }
-                        // Ignore comments (`:…`) and unknown fields.
-                    }
-
-                    const data = dataLines.join("\n");
-
-                    if (!data && eventType === "message") continue;
-
-                    switch (eventType) {
-                        case "message":
-                            if (data === "[DONE]") {
-                                onDone();
-                                return;
-                            }
-                            onChunk(data);
-                            break;
-                        case "stderr":
-                            // Pass stderr as regular output so the user can see it
-                            onChunk(data);
-                            break;
-                        case "error":
-                            onError(data);
-                            return;
-                    }
+                for (const line of parts) {
+                    parseAcpLine(line);
                 }
             }
 
-            // Final decode to flush any trailing bytes (handles edge case where
-            // the stream ends mid-codepoint).
+            // Final flush
             buffer += decoder.decode();
             if (buffer.trim()) {
-                // Try to salvage a last partial frame
-                const raw = buffer.trim();
-                let data = "";
-                for (const line of raw.split(/\r?\n/)) {
-                    if (line.startsWith("data:")) {
-                        data += line.slice(5).replace(/^ /, "");
-                    }
-                }
-                if (data && data !== "[DONE]") {
-                    onChunk(data);
-                }
+                parseAcpLine(buffer.trim());
             }
 
-            // If the stream ended without [DONE], treat as done
             onDone();
         } catch (err: any) {
             if (err.name === "AbortError") return;
@@ -182,38 +274,18 @@ export function Chat() {
         setInput("");
         setSending(true);
 
-        // Add user message + empty agent placeholder
-        const userMsg: Message = { role: "user", content: text };
-        const agentMsg: Message = { role: "agent", content: "" };
-        setMessages((prev) => [...prev, userMsg, agentMsg]);
+        // Start a new group for this conversation turn
+        groupRef.current = nextId();
+
+        // Add user bubble
+        appendBubble("user", { text });
 
         const abortController = new AbortController();
         abortRef.current = abortController;
 
-        streamAgentReply(
+        await streamAgentReply(
             agent!.slug,
             text,
-            // onChunk — append to the last (agent) message
-            (chunk) => {
-                setMessages((prev) => {
-                    const updated = [...prev];
-                    const last = updated[updated.length - 1];
-                    if (last && last.role === "agent") {
-                        // If content is empty, don't add leading newline
-                        last.content = last.content
-                            ? last.content + "\n" + chunk
-                            : chunk;
-
-                        try {
-                            console.log(JSON.parse(chunk));
-                        } catch (err) {
-                            console.log(err);
-                        }
-                    }
-
-                    return updated;
-                });
-            },
             // onDone
             () => {
                 setSending(false);
@@ -221,15 +293,9 @@ export function Chat() {
             },
             // onError
             (msg) => {
-                setMessages((prev) => {
-                    const updated = [...prev];
-                    const last = updated[updated.length - 1];
-                    if (last && last.role === "agent") {
-                        last.content = last.content
-                            ? last.content + "\n\n> ⚠ " + msg
-                            : "> ⚠ " + msg;
-                    }
-                    return updated;
+                appendBubble("system", {
+                    systemSubtype: "error",
+                    text: msg,
                 });
                 setSending(false);
                 abortRef.current = null;
@@ -280,49 +346,29 @@ export function Chat() {
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto py-6 flex flex-col gap-4"
             >
-                {messages.length === 0 && (
-                    <div className="flex flex-col items-center gap-2 mt-16 text-center">
-                        <p className="text-[var(--text-dim)] text-sm">
-                            Start a conversation with {agent.name}
-                        </p>
-                        <p className="text-[var(--text-dim)] text-xs">
-                            Messages are sent directly to your local CLI agent
-                        </p>
-                    </div>
+                {bubbles.length === 0 && (
+                    <EmptyChat
+                        title={`Start a conversation with ${agent.name}`}
+                        subtitle="Messages are sent directly to your local CLI agent"
+                    />
                 )}
 
-                {messages.map((msg, i) => (
-                    <div
-                        key={i}
-                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                        <div
-                            className={`max-w-[85%] px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${
-                                msg.role === "user"
-                                    ? "bg-[var(--tiffany)] text-white rounded-br-sm"
-                                    : "glass-card rounded-bl-sm text-[var(--text-primary)]"
-                            }`}
-                        >
-                            {msg.content}
-                        </div>
+                {groupBubbles(bubbles).map((group) => (
+                    <div key={group.id} className="flex flex-col gap-1.5">
+                        {group.bubbles.map((b) => (
+                            <AcpBubble key={b.id} bubble={b} />
+                        ))}
+                        {group.resultFooter && (
+                            <ResultFooter
+                                usage={group.resultFooter.usage}
+                                cost={group.resultFooter.cost}
+                                durationMs={group.resultFooter.durationMs}
+                            />
+                        )}
                     </div>
                 ))}
 
-                {sending && (
-                    <div className="flex justify-start">
-                        <div className="glass-card px-4 py-2.5 rounded-xl rounded-bl-sm text-sm text-[var(--text-dim)]">
-                            <span className="loading-dot mr-1" />
-                            <span
-                                className="loading-dot mr-1"
-                                style={{ animationDelay: "0.15s" }}
-                            />
-                            <span
-                                className="loading-dot"
-                                style={{ animationDelay: "0.3s" }}
-                            />
-                        </div>
-                    </div>
-                )}
+                {sending && <LoadingBubble />}
             </div>
 
             {/* ---- Input ---- */}

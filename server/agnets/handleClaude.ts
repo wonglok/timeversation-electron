@@ -96,6 +96,7 @@ export const handleClaude = ({
             "--output-format",
             "stream-json",
             "--verbose",
+            "--continue",
         ],
     };
 
@@ -121,6 +122,8 @@ export const handleClaude = ({
             mkdirSync(sessionPath, { recursive: true });
         } catch (e) {}
     }
+
+    console.log(sessionPath);
 
     const proc = spawn(config.cmd, resolvedArgs, {
         env: process.env,

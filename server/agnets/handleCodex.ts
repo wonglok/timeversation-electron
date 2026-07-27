@@ -87,9 +87,24 @@ export const handleCodex = ({
     res: any;
     message: string;
 }) => {
+    let appDataPath = app.getPath("appData");
+    let sessionID = `${req.body.sessionID || crypto.randomUUID()}`;
+    let sessionPath = `${path.join(appDataPath, "session", sessionID)}`;
+
+    if (sessionPath) {
+        try {
+            mkdirSync(sessionPath, { recursive: true });
+        } catch (e) {}
+    }
+
     const config = {
         cmd: "codex",
-        args: ["exec", "__REPLACE_ME_WITH_PROMPT__"],
+        args: [
+            "exec",
+            "__REPLACE_ME_WITH_PROMPT__",
+            "--cd",
+            JSON.stringify(sessionPath),
+        ],
     };
 
     // --- SSE headers ---
@@ -117,16 +132,6 @@ export const handleCodex = ({
         .join(" ");
 
     try {
-        let appDataPath = app.getPath("appData");
-        let sessionID = `${req.body.sessionID || crypto.randomUUID()}`;
-        let sessionPath = `${path.join(appDataPath, "session", sessionID)}`;
-
-        if (sessionPath) {
-            try {
-                mkdirSync(sessionPath, { recursive: true });
-            } catch (e) {}
-        }
-
         const stdout = execSync(cmdline, {
             env: process.env,
             cwd: sessionPath,
