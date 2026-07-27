@@ -1,4 +1,3 @@
-import { app } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { BUILTIN_AGENTS, type AgentDefinition } from "./byoa.ts";
@@ -73,41 +72,28 @@ export function chatStream(
     }
     const { command } = resolved;
 
-    // --- Ensure workspace sessions directory exists ---
-    const tempFolder = app.getPath("temp");
-    const workspace = `${tempFolder}/sessions`;
-
-    try {
-        mkdirSync(workspace, { recursive: true });
-    } catch (err) {
-        onChunk({
-            text: `[Error] Failed to create workspace directory: ${(err as Error).message}`,
-            stream: "stderr",
-        });
-        onDone();
-        return { abort: () => {} };
-    }
-
     // --- Spawn the agent process ---
     let child: ChildProcess;
-    const timeout = 120_000;
+    // const timeout = 120_000;
 
     try {
         const args = [
             "-p",
-            prompt,
-            "--verbose",
+            JSON.stringify(prompt),
             "--print",
             "--output-format",
             "stream-json",
             "--dangerously-skip-permissions",
+            "--verbose",
         ];
 
+        console.log(args);
+
         child = spawn(command, args, {
-            cwd: cwd ?? workspace,
+            cwd: cwd,
             stdio: ["ignore", "pipe", "pipe"],
             env: { ...process.env },
-            timeout,
+            // timeout,
             signal,
         });
     } catch (err) {
@@ -147,6 +133,10 @@ export function chatStream(
         onChunk({ text, stream: "stderr" });
     });
 
+    child.on("exit", (_code, _sig) => {
+        done();
+    });
+
     child.on("close", (_code, _sig) => {
         done();
     });
@@ -159,15 +149,19 @@ export function chatStream(
                 stream: "stderr",
             });
             done();
-        } else if (code === "ETIMEDOUT" || code === "ABORT_ERR") {
+        } else {
+            error(err);
+        }
+
+        /*
+         else if (code === "ETIMEDOUT" || code === "ABORT_ERR") {
             onChunk({
                 text: `[Error] ${command} timed out after ${timeout / 1000}s`,
                 stream: "stderr",
             });
             done();
-        } else {
-            error(err);
-        }
+        } 
+        */
     });
 
     // --- Return abort handle ---
