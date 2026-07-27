@@ -184,3 +184,28 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     icon: ClineIcon,
     // },
 ];
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/** Payload shape for the POST /api/agents/detect endpoint */
+export interface AgentDetectionPayload {
+    slug: string;
+    commands: string[];
+}
+
+/**
+ * Extract a minimal detection payload from the registry.
+ * Each entry carries the agent slug and its primary binary as `commands[0]`.
+ */
+export function getAgentDetectionPayload(): AgentDetectionPayload[] {
+    return BUILTIN_AGENTS.map((agent) => {
+        const primary = agent.commands[0];
+        return {
+            slug: agent.slug,
+            // Only send the primary binary for detection
+            commands: primary ? [primary] : [],
+        };
+    });
+}

@@ -2,9 +2,34 @@
 // Home page
 // ============================================================================
 
-import { BUILTIN_AGENTS } from "../store/BUILTIN_AGENTS";
+import { useEffect, useState } from "react";
+import {
+    BUILTIN_AGENTS,
+    getAgentDetectionPayload,
+} from "../store/BUILTIN_AGENTS";
+
+const API_BASE = "http://localhost:8390";
 
 export function Home() {
+    const [installed, setInstalled] = useState<Record<string, boolean>>({});
+
+    useEffect(() => {
+        const payload = getAgentDetectionPayload();
+        fetch(`${API_BASE}/api/agents/detect`, {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agents: payload }),
+        })
+            .then((res) => res.json())
+            .then((data: { installed: Record<string, boolean> }) => {
+                setInstalled(data.installed ?? {});
+            })
+            .catch(() => {
+                // Server not available — no dots shown
+            });
+    }, []);
+
     return (
         <main className="flex flex-col items-center px-8 pt-16 pb-24 min-h-screen">
             {/* ---- Hero ---- */}
@@ -37,12 +62,21 @@ export function Home() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full">
                     {BUILTIN_AGENTS.map((agent) => {
                         const IconComponent = agent.icon;
+                        const isInstalled = installed[agent.slug];
                         return (
                             <div
                                 key={agent.slug}
                                 title={agent.description}
-                                className="glass-card flex flex-col items-center gap-2.5 px-4 py-5 transition-all duration-300 hover:-translate-y-0.5"
+                                className="glass-card relative flex flex-col items-center gap-2.5 px-4 py-5 transition-all duration-300 hover:-translate-y-0.5"
                             >
+                                {/* Installed indicator */}
+                                {isInstalled && (
+                                    <span
+                                        className="absolute top-2 right-2 w-[8px] h-[8px] rounded-full bg-[var(--success)] animate-pulse"
+                                        title="Installed"
+                                    />
+                                )}
+
                                 {IconComponent ? (
                                     <IconComponent size={40} />
                                 ) : (

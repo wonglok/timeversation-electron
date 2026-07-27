@@ -3,6 +3,7 @@ import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { BrowserWindow } from "electron";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +25,20 @@ function sseData(data: unknown): Uint8Array {
 }
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+/** Check whether a CLI binary is available on the system PATH */
+function isCommandInstalled(cmd: string): boolean {
+    try {
+        execFileSync("which", [cmd], { stdio: "ignore" });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// ============================================================================
 // Express app
 // ============================================================================
 
@@ -36,6 +51,27 @@ function createServer({ win }: { win: BrowserWindow }) {
     // --- Health ---
     app.get("/api/health", (_req, res) => {
         res.json({ status: "ok", timestamp: new Date().toISOString() });
+    });
+
+    // --- Agent Detection ---
+    app.post("/api/agents/detect", (req, res) => {
+        const { agents } = req.body as {
+            agents?: Array<{ slug: string; commands: string[] }>;
+        };
+
+        if (!Array.isArray(agents)) {
+            res.status(400).json({ error: "agents array is required" });
+            return;
+        }
+
+        const installed: Record<string, boolean> = {};
+        for (const agent of agents) {
+            // An agent is "installed" if its primary binary (commands[0]) resolves
+            const binary = agent.commands?.[0];
+            installed[agent.slug] = binary ? isCommandInstalled(binary) : false;
+        }
+
+        res.json({ installed });
     });
 
     return app;
