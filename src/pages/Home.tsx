@@ -1,23 +1,3 @@
-import { Icon } from "../components/icons.tsx";
-import type { IconName } from "../components/icons.tsx";
-
-// ============================================================================
-// Data
-// ============================================================================
-
-const AGENT_ICONS: { icon: IconName; name: string }[] = [
-    { icon: "claude", name: "Claude Code" },
-    { icon: "codex", name: "Codex" },
-    { icon: "kilocode", name: "Kilo Code" },
-    { icon: "qwen", name: "Qwen Code" },
-    { icon: "opencode", name: "OpenCode" },
-    { icon: "kimi", name: "Kimi Code" },
-    { icon: "pi", name: "Pi Agent" },
-    { icon: "cline", name: "Cline" },
-    { icon: "copilot", name: "Copilot" },
-    { icon: "gemini", name: "Gemini CLI" },
-];
-
 // ============================================================================
 // Home page
 // ============================================================================
@@ -44,19 +24,6 @@ export function Home() {
                     <br />
                     Stop switching terminals. Start shipping faster.
                 </p>
-
-                {/* Agent icon row */}
-                <div style={styles.agentRow} className="reveal-3">
-                    {AGENT_ICONS.map((a) => (
-                        <span
-                            key={a.name}
-                            style={styles.agentIcon}
-                            title={a.name}
-                        >
-                            <Icon name={a.icon} size="1.5rem" />
-                        </span>
-                    ))}
-                </div>
             </section>
         </main>
     );
