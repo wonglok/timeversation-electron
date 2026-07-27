@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { execSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 // ============================================================================
@@ -87,11 +87,6 @@ export const handleCodex = ({
     res: any;
     message: string;
 }) => {
-    const config = {
-        cmd: "codex",
-        args: ["exec", "__REPLACE_ME_WITH_PROMPT__"],
-    };
-
     // --- SSE headers ---
     res.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -103,77 +98,127 @@ export const handleCodex = ({
     // Send an initial comment to flush headers
     res.write(encoder.encode(":ok\r\n\r\n"));
 
+    // --- Resolve session working directory ---
+    const appDataPath = app.getPath("appData");
+    const sid = req.body.sessionID || crypto.randomUUID();
+    const sessionPath = path.join(appDataPath, "session", sid);
+    try {
+        mkdirSync(sessionPath, { recursive: true });
+    } catch (_) {
+        // directory already exists — fine
+    }
+    const config = {
+        cmd: "codex",
+        args: [
+            "exec",
+            "--skip-git-repo-check",
+            "__REPLACE_ME_WITH_PROMPT__",
+            "--add-dir",
+            JSON.stringify(sessionPath),
+        ],
+    };
+
     const resolvedArgs = resolveArgs(config, message);
 
-    // Build a shell-safe command string for execSync
-    const cmdline = [config.cmd, ...resolvedArgs]
-        .map((arg) => {
-            // // Single-quote escape: replace ' with '\'' and wrap in quotes
-            // if (/[ \t\n'"$`\\]/.test(arg)) {
-            //     return `'${arg.replace(/'/g, "'\\''")}'`;
-            // }
-            return arg;
-        })
-        .join(" ");
+    // --- Spawn codex process (no shell — argument array is safe) ---
+    const proc = spawn(config.cmd, resolvedArgs, {
+        env: process.env,
+        cwd: sessionPath,
+        stdio: ["ignore", "pipe", "pipe"],
+    });
 
-    try {
-        let appDataPath = app.getPath("appData");
-        let sessionID = `${req.body.sessionID || crypto.randomUUID()}`;
-        let sessionPath = `${path.join(appDataPath, "session", sessionID)}`;
-        if (sessionPath) {
-            try {
-                mkdirSync(sessionPath, { recursive: true });
-            } catch (e) {}
+    // --- UTF-8 decoders ---
+    const stdoutDecoder = new TextDecoder();
+    const stderrDecoder = new TextDecoder();
+
+    let stdoutBuf = "";
+    let stderrBuf = "";
+
+    function pipeChunk(
+        raw: Buffer,
+        decoder: TextDecoder,
+        bufRef: { buf: string },
+        writeLine: (line: string) => void,
+    ) {
+        const text = decoder.decode(raw, { stream: true });
+        bufRef.buf += text;
+        const lines = bufRef.buf.split("\n");
+        bufRef.buf = lines.pop() ?? "";
+        for (const line of lines) {
+            writeLine(line);
         }
+    }
 
-        const stdout = execSync(cmdline, {
-            env: process.env,
-            cwd: `${sessionPath}`,
-            input: ``,
-            encoding: "utf-8",
-            stdio: ["pipe", "pipe", "pipe"],
-            maxBuffer: 50 * 1024 * 1024, // 50 MB
-        });
-
-        // Emit each line as an SSE data event (preserving empty lines)
-        const lines = stdout.split("\n");
-        // If stdout ends with \n, split gives a trailing "" — drop it so we
-        // don't emit a spurious blank line at the end.
-        const last = lines[lines.length - 1];
-        const clean = last === "" ? lines.slice(0, -1) : lines;
-
-        for (const line of clean) {
-            writeSSEEvent(res, line);
+    function flushDecoder(
+        decoder: TextDecoder,
+        bufRef: { buf: string },
+        writeSSE: (data: string, event?: string) => void,
+        event?: string,
+    ) {
+        const tail = decoder.decode();
+        bufRef.buf += tail;
+        if (bufRef.buf) {
+            writeSSE(bufRef.buf, event);
+            bufRef.buf = "";
         }
+    }
 
-        writeSSEEvent(res, "[DONE]");
-        res.end();
-    } catch (err: any) {
-        // execSync throws on non-zero exit — stderr is on err.stderr
-        if (err.stdout) {
-            for (const line of String(err.stdout).split("\n")) {
-                writeSSEEvent(res, line);
-            }
-        }
-        if (err.stderr) {
-            for (const line of String(err.stderr).split("\n")) {
-                if (line) writeSSEEvent(res, line, "stderr");
-            }
-        }
+    // --- stdout → SSE ---
+    proc.stdout.on("data", (raw: Buffer) => {
+        pipeChunk(raw, stdoutDecoder, { buf: stdoutBuf }, (line) =>
+            writeSSEEvent(res, line),
+        );
+    });
 
-        if (err.signal) {
+    // --- stderr → SSE named events ---
+    proc.stderr.on("data", (raw: Buffer) => {
+        pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
+            writeSSEEvent(res, line, "stderr"),
+        );
+    });
+
+    // --- Process complete ---
+    proc.on("close", (code, signal) => {
+        flushDecoder(
+            stdoutDecoder,
+            { buf: stdoutBuf },
+            writeSSEEvent.bind(null, res),
+        );
+        flushDecoder(
+            stderrDecoder,
+            { buf: stderrBuf },
+            writeSSEEvent.bind(null, res),
+            "stderr",
+        );
+
+        if (code === 0) {
+            writeSSEEvent(res, "[DONE]");
+        } else if (signal) {
             writeSSEEvent(
                 res,
-                `Process terminated by signal: ${err.signal}`,
+                `Process terminated by signal: ${signal}`,
                 "error",
             );
         } else {
             writeSSEEvent(
                 res,
-                `Process exited with code ${err.status ?? "unknown"}`,
+                `Process exited with code ${code ?? "unknown"}`,
                 "error",
             );
         }
         res.end();
-    }
+    });
+
+    // // --- Process spawn error ---
+    // proc.on("error", (err) => {
+    //     writeSSEEvent(res, err.message, "error");
+    //     res.end();
+    // });
+
+    // // --- Client disconnect → kill process ---
+    // req.on("close", () => {
+    //     if (proc.exitCode === null && !proc.killed) {
+    //         proc.kill();
+    //     }
+    // });
 };
