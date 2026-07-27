@@ -1,0 +1,345 @@
+@import "tailwindcss";
+@import "@dannymichel/proxima-nova";
+
+:root {
+    --primary: #A8A6B4;
+    --primary-glow: #BCB9C8;
+    --accent: #8CB4D0;
+    --accent-glow: #A8CCE4;
+    --success: #7BB8A0;
+    --bg-deep: #F4F3F7;
+    --bg-surface: #FFFFFF;
+    --bg-card: rgba(255, 255, 255, 0.78);
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-glow: rgba(168, 166, 180, 0.22);
+    --text-primary: #1C1C2E;
+    --text-secondary: #6A6A7E;
+    --text-dim: #A0A0B0;
+    --radius: 14px;
+    --transition-easing: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+    font-family: "Proxima Nova", Inter, system-ui, sans-serif;
+    line-height: 1.6;
+    font-weight: 400;
+    color-scheme: light;
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Breath of Heaven Background ---- */
+body {
+    margin: 0;
+    display: flex;
+    min-width: 320px;
+    min-height: 100vh;
+    overscroll-behavior-x: none;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 0%, #000 25%, transparent 70%);
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 700px 450px at 25% 20%, rgba(180, 176, 190, 0.1), transparent),
+        radial-gradient(ellipse 500px 550px at 75% 55%, rgba(150, 170, 195, 0.08), transparent),
+        radial-gradient(ellipse 600px 400px at 50% 80%, rgba(200, 195, 210, 0.06), transparent);
+}
+
+#root {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+}
+
+/* ---- Typography ---- */
+h1, h2, h3 {
+    font-family: "Proxima Nova", Inter, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* ---- Glass Card ---- */
+.glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    backdrop-filter: blur(24px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.glass-card:hover {
+    border-color: var(--border-glow);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 8px 28px rgba(0, 0, 0, 0.04);
+    transition: border-color 0.4s var(--transition-easing), box-shadow 0.4s var(--transition-easing);
+}
+
+/* ---- Primary Button ---- */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: #1C1C2E;
+    background: linear-gradient(135deg, #EAE9EF 0%, #E4E3EB 50%, #E6E8EE 100%);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s var(--transition-easing);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #F0EFF5 0%, #E8E7EF 50%, #EAECF2 100%);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    opacity: 0.35;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
+}
+
+/* ---- Secondary Button ---- */
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s var(--transition-easing);
+}
+
+.btn-secondary:hover {
+    border-color: var(--border-glow);
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--text-primary);
+}
+
+.btn-secondary:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+/* ---- Input Fields ---- */
+.input-field {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.3s var(--transition-easing), box-shadow 0.3s var(--transition-easing);
+}
+
+.input-field:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(168, 166, 180, 0.15);
+}
+
+.input-field::placeholder {
+    color: var(--text-dim);
+}
+
+/* ---- Feather Gradient Text ---- */
+.text-gradient {
+    background: linear-gradient(135deg, #A09CAE 0%, #98A0B2 50%, #90A4B8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ---- Step Indicators ---- */
+.step-dot {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: all 0.4s var(--transition-easing);
+}
+
+.step-dot.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 0 18px rgba(168, 166, 180, 0.4);
+}
+
+.step-dot.done {
+    background: var(--success);
+    color: #fff;
+}
+
+.step-dot.pending {
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--text-dim);
+    border: 1px solid var(--border-subtle);
+}
+
+/* ---- Progress Bar ---- */
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width 0.5s var(--transition-easing);
+    box-shadow: 0 0 10px rgba(168, 166, 180, 0.3);
+}
+
+/* ---- Staggered Reveal ---- */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.reveal-1 { animation: fadeUp 0.6s var(--transition-easing) 0.05s both; }
+.reveal-2 { animation: fadeUp 0.6s var(--transition-easing) 0.15s both; }
+.reveal-3 { animation: fadeUp 0.6s var(--transition-easing) 0.25s both; }
+.reveal-4 { animation: fadeUp 0.6s var(--transition-easing) 0.35s both; }
+
+/* ---- Pulse Ring ---- */
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(168, 166, 180, 0.3); }
+    70% { box-shadow: 0 0 0 12px rgba(168, 166, 180, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(168, 166, 180, 0); }
+}
+
+.pulse-ring {
+    animation: pulse-ring 2.5s ease-out infinite;
+}
+
+/* ---- Divider ---- */
+.hr-glow {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
+}
+
+/* ---- Select ---- */
+.select-field {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.3s var(--transition-easing);
+}
+
+.select-field:focus {
+    border-color: var(--primary);
+}
+
+/* ---- Links ---- */
+a {
+    font-weight: 500;
+    color: var(--primary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--accent);
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.22);
+}
+
+/* ---- Selection ---- */
+::selection {
+    background: rgba(168, 166, 180, 0.25);
+    color: var(--text-primary);
+}
+
+/* ---- Inline Code ---- */
+code {
+    background: rgba(0, 0, 0, 0.04);
+    color: var(--text-secondary);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
