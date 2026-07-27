@@ -141,16 +141,16 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         icon: CursorIcon,
     },
 
-    // {
-    //     name: "Pi Coding Agent",
-    //     slug: "pi-coding-agent",
-    //     commands: ["pi", "pi-coding-agent", "pi-agent"],
-    //     detectionArgs: ["--version"],
-    //     versionRegex: /(\d+\.\d+\.\d+)/,
-    //     description: "Pi AI coding assistant CLI",
-    //     homepage: "https://github.com/pi-ai/pi-coding-agent",
-    //     icon: PiIcon,
-    // },
+    {
+        name: "Pi Coding Agent",
+        slug: "pi-coding-agent",
+        commands: ["pi", "pi-coding-agent", "pi-agent"],
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Pi AI coding assistant CLI",
+        homepage: "https://github.com/pi-ai/pi-coding-agent",
+        icon: PiIcon,
+    },
 
     // {
     //     name: "Kilo Code",
