@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-import { Link } from "react-router-dom";
 import { Icon } from "../components/icons.tsx";
 import type { IconName } from "../components/icons.tsx";
 
@@ -20,34 +18,11 @@ const AGENT_ICONS: { icon: IconName; name: string }[] = [
     { icon: "gemini", name: "Gemini CLI" },
 ];
 
-const FEATURES: { icon: IconName; title: string; body: string }[] = [
-    {
-        icon: "sparkles",
-        title: "Bring Your Own Agents",
-        body: "Claude Code, Kilo Code, Codex, Qwen, Kimi, Pi — every CLI agent you already use, detected and ready in one place. No lock-in, no switching.",
-    },
-    {
-        icon: "kilocode",
-        title: "CLI at Your Fingertips",
-        body: "Spawn any agent, pipe results between them, and orchestrate multi-agent workflows — all from a single conversational interface that feels native.",
-    },
-    {
-        icon: "hourglass",
-        title: "Save Hours Every Week",
-        body: "Stop juggling terminals. One prompt reaches the right agent. Context flows across sessions. What used to take twenty minutes now takes one.",
-    },
-];
-
 // ============================================================================
 // Home page
 // ============================================================================
 
 export function Home() {
-    const handleLogin = useCallback(() => {
-        // Electron's windowOpenHandler catches this and opens in the default browser
-        window.open("http://inter-site.com", "_blank");
-    }, []);
-
     return (
         <main style={styles.root}>
             {/* ---- Hero ---- */}
@@ -82,74 +57,7 @@ export function Home() {
                         </span>
                     ))}
                 </div>
-
-                {/* CTA buttons */}
-                <div style={styles.ctaWrapper} className="reveal-4">
-                    <Link to="/chat" className="btn-primary">
-                        <Icon
-                            name="sparkles"
-                            size="1.05rem"
-                            className="mr-1 inline-block"
-                        />
-                        Start Chatting
-                    </Link>
-                    <button
-                        type="button"
-                        className="btn-secondary"
-                        style={styles.ctaButton}
-                        onClick={handleLogin}
-                    >
-                        <Icon
-                            name="lock"
-                            size="1.05rem"
-                            className="mr-1 inline-block"
-                        />
-                        Login to Timversation
-                    </button>
-                    <p style={styles.ctaHint}>
-                        Connect your agents and pick up where you left off
-                    </p>
-                </div>
-
-                {/* Link to BYOA scanner */}
-                <Link to="/agents" className="btn-secondary reveal-4">
-                    See which agents are installed on your machine →
-                </Link>
             </section>
-
-            {/* ---- Features ---- */}
-            <section style={styles.features}>
-                {FEATURES.map((f, i) => (
-                    <div
-                        key={f.title}
-                        className={`glass-card reveal-${i + 1}`}
-                        style={styles.featureCard}
-                    >
-                        <span style={styles.featureIcon}>
-                            <Icon name={f.icon} size="2rem" />
-                        </span>
-                        <h3 style={styles.featureTitle}>{f.title}</h3>
-                        <p style={styles.featureBody}>{f.body}</p>
-                    </div>
-                ))}
-            </section>
-
-            {/* ---- Divider ---- */}
-            <hr className="hr-glow" style={styles.divider} />
-
-            {/* ---- Footer CTA ---- */}
-            <footer style={styles.footer}>
-                <p style={styles.footerText}>
-                    Ready to stop context-switching?
-                </p>
-                <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={handleLogin}
-                >
-                    Get Started — it's free
-                </button>
-            </footer>
         </main>
     );
 }
