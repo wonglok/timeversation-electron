@@ -9,6 +9,7 @@ import {
     BUILTIN_AGENTS,
     type AgentDetectionResult,
 } from "./bring-agents/byoa.ts";
+import { chatStream, type ChatChunk } from "./bring-agents/chat.ts";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ============================================================================
@@ -101,6 +102,60 @@ function createServer({ win }: { win: BrowserWindow }) {
         })();
     });
 
+    // --- Chat: send a prompt to an agent (SSE stream) ---
+    app.post("/api/chat/send", (req, res) => {
+        const { command, message, cwd } = req.body as {
+            command?: string;
+            message?: string;
+            cwd?: string;
+        };
+
+        if (!command || !message) {
+            res.status(400).json({
+                error: "Missing required fields",
+                message: "`command` and `message` are required.",
+            });
+            return;
+        }
+
+        res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+            "X-Accel-Buffering": "no",
+        });
+
+        let aborted = false;
+
+        req.on("close", () => {
+            aborted = true;
+        });
+
+        void (async () => {
+            try {
+                for await (const chunk of chatStream({
+                    command,
+                    prompt: message,
+                    cwd,
+                })) {
+                    if (aborted) break;
+                    const data: ChatChunk = chunk;
+                    res.write(`data: ${JSON.stringify(data)}\n\n`);
+                }
+                if (!aborted) {
+                    res.write("event: done\ndata: {}\n\n");
+                }
+            } catch (err) {
+                if (!aborted) {
+                    res.write(
+                        `event: error\ndata: ${JSON.stringify({ message: (err as Error).message })}\n\n`,
+                    );
+                }
+            } finally {
+                if (!aborted) res.end();
+            }
+        })();
+    });
     return app;
 }
 

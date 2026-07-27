@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useAgentsStore } from "../store/agents.ts";
 import type { AgentResult } from "../store/agents.ts";
 import { Icon, resolveIconName } from "../components/icons.tsx";
@@ -45,6 +46,17 @@ function AgentCard({ result }: { result: AgentResult }) {
 				>
 					Not found
 				</span>
+			)}
+
+			{/* Chat link */}
+			{installed && (
+				<Link
+					to={`/chat?agent=${encodeURIComponent(agent.name)}`}
+					className="btn-secondary mt-1 text-[0.7rem] py-1 px-2 inline-flex items-center gap-1"
+				>
+					<Icon name="sparkles" size="0.65rem" />
+					Chat
+				</Link>
 			)}
 
 			{/* Binary path */}

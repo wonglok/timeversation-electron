@@ -85,11 +85,15 @@ export function Home() {
 					))}
 				</div>
 
-				{/* CTA button */}
+				{/* CTA buttons */}
 				<div style={styles.ctaWrapper} className="reveal-4">
+					<Link to="/chat" className="btn-primary">
+						<Icon name="sparkles" size="1.05rem" className="mr-1 inline-block" />
+						Start Chatting
+					</Link>
 					<button
 						type="button"
-						className="btn-primary pulse-ring"
+						className="btn-secondary"
 						style={styles.ctaButton}
 						onClick={handleLogin}
 					>

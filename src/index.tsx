@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import "@fontsource-variable/inter/opsz-italic.css";
 import { Home } from "./pages/Home.tsx";
 import { Agents } from "./pages/Agents.tsx";
+import { Chat } from "./pages/Chat.tsx";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -12,6 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/agents" element={<Agents />} />
+                <Route path="/chat" element={<Chat />} />
             </Routes>
         </HashRouter>
     </React.StrictMode>,
