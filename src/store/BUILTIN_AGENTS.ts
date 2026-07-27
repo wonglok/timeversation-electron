@@ -37,8 +37,8 @@ export interface AgentDefinition {
     name: string;
     /** URL-friendly unique slug (e.g. "claude-code") */
     slug: string;
-    /** CLI command(s) to try — first that resolves wins */
-    commands: string[];
+    /** CLI binary name used to detect if the agent is installed */
+    cliName: string;
     /** Args to pass for version / detection (e.g. ["--version"]) */
     detectionArgs: string[];
     /** Regex to extract semver from combined stdout+stderr; group 1 = version */
@@ -60,20 +60,12 @@ export interface AgentDefinition {
  * Each entry lists possible binary names (first match wins) and the args
  * to invoke for a version/detection check.
  */
+
 export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "Claude Code",
         slug: "claude-code",
-        commands: [
-            "claude",
-            "-p",
-            "__REPLACE_ME_WITH_PROMPT__",
-            "--print",
-            "--verbose",
-            "--output-format",
-            "stream-json",
-            "--verbose",
-        ],
+        cliName: "claude",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Anthropic's agentic coding CLI tool",
@@ -83,7 +75,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "OpenAI Codex CLI",
         slug: "openai-codex-cli",
-        commands: ["codex"],
+        cliName: "codex",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "OpenAI's terminal-based coding agent",
@@ -93,7 +85,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "Qwen Code",
         slug: "qwen-code",
-        commands: ["qwencode", "qwen-code", "qwen"],
+        cliName: "qwen",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Alibaba's Qwen-powered coding CLI agent",
@@ -103,7 +95,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "OpenCode",
         slug: "opencode",
-        commands: ["opencode"],
+        cliName: "opencode",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Open-source terminal coding agent with MCP support",
@@ -113,7 +105,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "Kimi Code",
         slug: "kimi-code",
-        commands: ["kimicode", "kimi-code", "kimi"],
+        cliName: "kimi",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Moonshot AI's Kimi-powered coding agent",
@@ -123,7 +115,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "Gemini CLI",
         slug: "gemini-cli",
-        commands: ["gemini"],
+        cliName: "gemini",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Google's Gemini-powered CLI agent",
@@ -133,7 +125,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "Cursor CLI",
         slug: "cursor-cli",
-        commands: ["cursor"],
+        cliName: "cursor",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Cursor AI editor CLI tools",
@@ -144,7 +136,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     {
         name: "Pi Coding Agent",
         slug: "pi-coding-agent",
-        commands: ["pi", "pi-coding-agent", "pi-agent"],
+        cliName: "pi",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Pi AI coding assistant CLI",
@@ -155,7 +147,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     // {
     //     name: "Kilo Code",
     //     slug: "kilo-code",
-    //     commands: ["kilocode"],
+    //     cliName: "kilocode",
     //     detectionArgs: ["--version"],
     //     versionRegex: /(\d+\.\d+\.\d+)/,
     //     description: "Open-source AI coding agent with multi-provider support",
@@ -166,7 +158,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     // {
     //     name: "GitHub Copilot (gh extension)",
     //     slug: "github-copilot",
-    //     commands: ["gh"],
+    //     cliName: "gh",
     //     detectionArgs: ["copilot", "--version"],
     //     versionRegex: /(\d+\.\d+\.\d+)/,
     //     description: "GitHub Copilot via gh CLI extension",
@@ -176,7 +168,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     // {
     //     name: "Cline CLI",
     //     slug: "cline-cli",
-    //     commands: ["cline"],
+    //     cliName: "cline",
     //     detectionArgs: ["--version"],
     //     versionRegex: /(\d+\.\d+\.\d+)/,
     //     description: "Cline's autonomous coding agent CLI",
@@ -192,20 +184,16 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
 /** Payload shape for the POST /api/agents/detect endpoint */
 export interface AgentDetectionPayload {
     slug: string;
-    commands: string[];
+    cliName: string;
 }
 
 /**
  * Extract a minimal detection payload from the registry.
- * Each entry carries the agent slug and its primary binary as `commands[0]`.
+ * Each entry carries the agent slug and its CLI binary name.
  */
 export function getAgentDetectionPayload(): AgentDetectionPayload[] {
-    return BUILTIN_AGENTS.map((agent) => {
-        const primary = agent.commands[0];
-        return {
-            slug: agent.slug,
-            // Only send the primary binary for detection
-            commands: primary ? [primary] : [],
-        };
-    });
+    return BUILTIN_AGENTS.map((agent) => ({
+        slug: agent.slug,
+        cliName: agent.cliName,
+    }));
 }

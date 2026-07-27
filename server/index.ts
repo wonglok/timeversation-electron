@@ -56,7 +56,7 @@ function createServer({ win }: { win: BrowserWindow }) {
     // --- Agent Detection ---
     app.post("/api/agents/detect", (req, res) => {
         const { agents } = req.body as {
-            agents?: Array<{ slug: string; commands: string[] }>;
+            agents?: Array<{ slug: string; cliName: string }>;
         };
 
         if (!Array.isArray(agents)) {
@@ -66,9 +66,9 @@ function createServer({ win }: { win: BrowserWindow }) {
 
         const installed: Record<string, boolean> = {};
         for (const agent of agents) {
-            // An agent is "installed" if its primary binary (commands[0]) resolves
-            const binary = agent.commands?.[0];
-            installed[agent.slug] = binary ? isCommandInstalled(binary) : false;
+            installed[agent.slug] = agent.cliName
+                ? isCommandInstalled(agent.cliName)
+                : false;
         }
 
         res.json({ installed });

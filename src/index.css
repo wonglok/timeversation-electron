@@ -2,19 +2,24 @@
 @import "@dannymichel/proxima-nova";
 
 :root {
-    --primary: #a8a6b4;
-    --primary-glow: #bcb9c8;
-    --accent: #8cb4d0;
-    --accent-glow: #a8cce4;
-    --success: #7bb8a0;
-    --bg-deep: #f4f3f7;
-    --bg-surface: #ffffff;
-    --bg-card: rgba(215, 246, 255, 0.989);
-    --border-subtle: rgba(0, 0, 0, 0.06);
-    --border-glow: rgba(168, 166, 180, 0.22);
-    --text-primary: #1c1c2e;
-    --text-secondary: #6a6a7e;
-    --text-dim: #a0a0b0;
+    --tiffany: #81D8D0;
+    --tiffany-deep: #5BBFB7;
+    --tiffany-soft: #B8E8E3;
+    --tiffany-glow: rgba(129, 216, 208, 0.25);
+
+    --primary: #81D8D0;
+    --primary-glow: #B8E8E3;
+    --accent: #6BA5C4;
+    --accent-glow: #96C8E2;
+    --success: #7BB8A0;
+    --bg-deep: #F3F8FA;
+    --bg-surface: #FFFFFF;
+    --bg-card: rgba(255, 255, 255, 0.78);
+    --border-subtle: rgba(129, 216, 208, 0.15);
+    --border-glow: rgba(129, 216, 208, 0.30);
+    --text-primary: #1B2D3B;
+    --text-secondary: #5C7A8A;
+    --text-dim: #8CAAB8;
     --radius: 14px;
     --transition-easing: cubic-bezier(0.22, 0.61, 0.36, 1);
 
@@ -30,7 +35,7 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* ---- Breath of Heaven Background ---- */
+/* ---- Tiffany Dream Atmosphere ---- */
 body {
     margin: 0;
     display: flex;
@@ -45,39 +50,43 @@ body::before {
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background-image:
-        linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
-    background-size: 64px 64px;
-    mask-image: radial-gradient(
-        ellipse 80% 80% at 50% 0%,
-        #000 25%,
-        transparent 70%
-    );
+    background:
+        radial-gradient(ellipse 900px 600px at 30% 15%, rgba(129, 216, 208, 0.12), transparent),
+        radial-gradient(ellipse 600px 500px at 70% 45%, rgba(107, 165, 196, 0.08), transparent),
+        radial-gradient(ellipse 700px 450px at 50% 75%, rgba(129, 216, 208, 0.06), transparent),
+        radial-gradient(ellipse 500px 400px at 85% 85%, rgba(184, 232, 227, 0.10), transparent);
 }
 
+/* Hero bloom — the signature Tiffany glass orb */
 body::after {
     content: "";
     position: fixed;
-    inset: 0;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 500px;
     z-index: 0;
     pointer-events: none;
-    background:
-        radial-gradient(
-            ellipse 700px 450px at 25% 20%,
-            rgba(180, 176, 190, 0.1),
-            transparent
-        ),
-        radial-gradient(
-            ellipse 500px 550px at 75% 55%,
-            rgba(150, 170, 195, 0.08),
-            transparent
-        ),
-        radial-gradient(
-            ellipse 600px 400px at 50% 80%,
-            rgba(200, 195, 210, 0.06),
-            transparent
-        );
+    background: radial-gradient(
+        ellipse 60% 50% at 50% 40%,
+        rgba(184, 232, 227, 0.35) 0%,
+        rgba(129, 216, 208, 0.15) 35%,
+        rgba(129, 216, 208, 0.04) 65%,
+        transparent 100%
+    );
+    animation: tiffany-breathe 8s ease-in-out infinite;
+}
+
+@keyframes tiffany-breathe {
+    0%, 100% {
+        opacity: 0.70;
+        transform: translateX(-50%) scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.08);
+    }
 }
 
 #root {
@@ -87,9 +96,7 @@ body::after {
 }
 
 /* ---- Typography ---- */
-h1,
-h2,
-h3 {
+h1, h2, h3 {
     font-family: "Proxima Nova", Inter, system-ui, sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -100,17 +107,17 @@ h3 {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius);
-    backdrop-filter: blur(24px);
+    backdrop-filter: blur(28px);
     box-shadow:
-        0 1px 3px rgba(0, 0, 0, 0.04),
-        0 4px 16px rgba(0, 0, 0, 0.03);
+        0 1px 3px rgba(129, 216, 208, 0.04),
+        0 4px 16px rgba(129, 216, 208, 0.04);
 }
 
 .glass-card:hover {
     border-color: var(--border-glow);
     box-shadow:
-        0 1px 3px rgba(0, 0, 0, 0.05),
-        0 8px 28px rgba(0, 0, 0, 0.04);
+        0 1px 3px rgba(129, 216, 208, 0.06),
+        0 8px 32px rgba(129, 216, 208, 0.08);
     transition:
         border-color 0.4s var(--transition-easing),
         box-shadow 0.4s var(--transition-easing);
@@ -126,9 +133,9 @@ h3 {
     font-size: 1rem;
     font-weight: 600;
     font-family: inherit;
-    color: #1c1c2e;
-    background: linear-gradient(135deg, #eae9ef 0%, #e4e3eb 50%, #e6e8ee 100%);
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    color: #FFFFFF;
+    background: linear-gradient(135deg, #81D8D0 0%, #6BA5C4 100%);
+    border: 1px solid rgba(129, 216, 208, 0.30);
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s var(--transition-easing);
@@ -143,18 +150,18 @@ h3 {
     border-radius: 10px;
     background: linear-gradient(
         135deg,
-        rgba(255, 255, 255, 0.5) 0%,
+        rgba(255, 255, 255, 0.35) 0%,
         transparent 60%
     );
     pointer-events: none;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #f0eff5 0%, #e8e7ef 50%, #eaecf2 100%);
-    border-color: rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #8FDCD5 0%, #78B2CE 100%);
+    border-color: rgba(129, 216, 208, 0.50);
     box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.06),
-        0 8px 24px rgba(0, 0, 0, 0.04);
+        0 2px 8px rgba(129, 216, 208, 0.15),
+        0 8px 24px rgba(129, 216, 208, 0.10);
     transform: translateY(-1px);
 }
 
@@ -189,7 +196,7 @@ h3 {
 
 .btn-secondary:hover {
     border-color: var(--border-glow);
-    background: rgba(0, 0, 0, 0.03);
+    background: rgba(129, 216, 208, 0.06);
     color: var(--text-primary);
 }
 
@@ -215,16 +222,16 @@ h3 {
 
 .input-field:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(168, 166, 180, 0.15);
+    box-shadow: 0 0 0 3px rgba(129, 216, 208, 0.15);
 }
 
 .input-field::placeholder {
     color: var(--text-dim);
 }
 
-/* ---- Feather Gradient Text ---- */
+/* ---- Tiffany Gradient Text ---- */
 .text-gradient {
-    background: linear-gradient(135deg, #a09cae 0%, #98a0b2 50%, #90a4b8 100%);
+    background: linear-gradient(135deg, #5BBFB7 0%, #81D8D0 40%, #6BA5C4 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -246,7 +253,7 @@ h3 {
 .step-dot.active {
     background: var(--primary);
     color: #fff;
-    box-shadow: 0 0 18px rgba(168, 166, 180, 0.4);
+    box-shadow: 0 0 18px rgba(129, 216, 208, 0.4);
 }
 
 .step-dot.done {
@@ -264,7 +271,7 @@ h3 {
 .progress-bar {
     width: 100%;
     height: 4px;
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(129, 216, 208, 0.10);
     border-radius: 2px;
     overflow: hidden;
 }
@@ -272,9 +279,9 @@ h3 {
 .progress-bar-fill {
     height: 100%;
     border-radius: 2px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
+    background: linear-gradient(90deg, var(--tiffany), var(--accent));
     transition: width 0.5s var(--transition-easing);
-    box-shadow: 0 0 10px rgba(168, 166, 180, 0.3);
+    box-shadow: 0 0 10px rgba(129, 216, 208, 0.3);
 }
 
 /* ---- Staggered Reveal ---- */
@@ -289,40 +296,41 @@ h3 {
     }
 }
 
-.reveal-1 {
-    animation: fadeUp 0.6s var(--transition-easing) 0.05s both;
-}
-.reveal-2 {
-    animation: fadeUp 0.6s var(--transition-easing) 0.15s both;
-}
-.reveal-3 {
-    animation: fadeUp 0.6s var(--transition-easing) 0.25s both;
-}
-.reveal-4 {
-    animation: fadeUp 0.6s var(--transition-easing) 0.35s both;
-}
+.reveal-1 { animation: fadeUp 0.6s var(--transition-easing) 0.05s both; }
+.reveal-2 { animation: fadeUp 0.6s var(--transition-easing) 0.15s both; }
+.reveal-3 { animation: fadeUp 0.6s var(--transition-easing) 0.25s both; }
+.reveal-4 { animation: fadeUp 0.6s var(--transition-easing) 0.35s both; }
 
 /* ---- Pulse Ring ---- */
 @keyframes pulse-ring {
-    0% {
-        box-shadow: 0 0 0 0 rgba(168, 166, 180, 0.3);
-    }
-    70% {
-        box-shadow: 0 0 0 12px rgba(168, 166, 180, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(168, 166, 180, 0);
-    }
+    0% { box-shadow: 0 0 0 0 rgba(129, 216, 208, 0.3); }
+    70% { box-shadow: 0 0 0 12px rgba(129, 216, 208, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(129, 216, 208, 0); }
 }
 
 .pulse-ring {
     animation: pulse-ring 2.5s ease-out infinite;
 }
 
+/* ---- Lime Pulse Dot ---- */
+@keyframes lime-pulse {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(163, 230, 53, 0.7);
+    }
+    50% {
+        opacity: 0.6;
+        box-shadow: 0 0 0 6px rgba(163, 230, 53, 0);
+    }
+}
+
+.lime-pulse-dot {
+    animation: lime-pulse 2s ease-in-out infinite;
+}
+
 /* ---- Loading Dot ---- */
 @keyframes loading-float {
-    0%,
-    100% {
+    0%, 100% {
         opacity: 0.3;
         transform: translateY(0);
     }
@@ -374,7 +382,7 @@ h3 {
 /* ---- Links ---- */
 a {
     font-weight: 500;
-    color: var(--primary);
+    color: var(--tiffany-deep);
     text-decoration: none;
     transition: color 0.2s;
 }
@@ -393,23 +401,23 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.12);
+    background: rgba(129, 216, 208, 0.20);
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.22);
+    background: rgba(129, 216, 208, 0.35);
 }
 
 /* ---- Selection ---- */
 ::selection {
-    background: rgba(168, 166, 180, 0.25);
+    background: rgba(129, 216, 208, 0.25);
     color: var(--text-primary);
 }
 
 /* ---- Inline Code ---- */
 code {
-    background: rgba(0, 0, 0, 0.04);
+    background: rgba(129, 216, 208, 0.10);
     color: var(--text-secondary);
     padding: 0.1em 0.4em;
     border-radius: 4px;
