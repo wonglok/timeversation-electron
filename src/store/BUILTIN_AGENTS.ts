@@ -82,6 +82,16 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         homepage: "https://github.com/openai/codex",
         icon: CodexColor,
     },
+    {
+        name: "OpenAI Codex SDK",
+        slug: "openai-codex-sdk",
+        cliName: "codex",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "OpenAI Codex agent via TypeScript SDK with streaming",
+        homepage: "https://www.npmjs.com/package/@openai/codex-sdk",
+        icon: CodexColor,
+    },
 
     {
         name: "OpenCode",

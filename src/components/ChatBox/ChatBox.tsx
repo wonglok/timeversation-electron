@@ -54,6 +54,7 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
     const abortRef = useRef<AbortController | null>(null);
     const loadedConvRef = useRef<string | undefined>(undefined);
     const groupRef = useRef<string>("");
+    const codexItemMapRef = useRef<Map<string, string>>(new Map());
 
     // ---- Effects ----
 
@@ -136,7 +137,231 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         [],
     );
 
-    // ---- SSE parsing ----
+    /**
+     * Replace an existing bubble's text in-place (used by Codex SDK where
+     * item.updated carries the FULL accumulated text, not a delta).
+     */
+    const updateBubbleById = useCallback(
+        (bubbleId: string, updates: Partial<Omit<Bubble, "id">>) => {
+            setBubbles((prev) => {
+                const idx = prev.findIndex((b) => b.id === bubbleId);
+                if (idx === -1) return prev;
+                const next = [...prev];
+                next[idx] = { ...next[idx], ...updates } as Bubble;
+                return next;
+            });
+        },
+        [],
+    );
+
+    // ---- Codex SDK event parsing ----
+    //
+    // The @openai/codex-sdk emits typed ThreadEvent JSON objects.  We detect
+    // them by their dotted `type` field ("item.started", "turn.completed", …)
+    // and map each item kind to the appropriate Bubble.
+    //
+    // For streaming text items (agent_message, reasoning) the SDK sends
+    // item.started → item.updated* → item.completed, where each payload
+    // carries the FULL accumulated text.  We create the bubble on the first
+    // event and replace text on subsequent events (unlike OpenCode/Claude
+    // where each chunk is a delta that gets appended).
+
+    /** Map a Codex ThreadItem to a bubble, creating or updating as needed. */
+    function handleCodexItem(
+        item: any,
+        eventType: "item.started" | "item.updated" | "item.completed",
+    ): void {
+        const itemId: string = item.id;
+        const existingBubbleId = codexItemMapRef.current.get(itemId);
+
+        switch (item.type) {
+            // -- Streaming text: agent reply --
+            case "agent_message": {
+                const text: string = item.text ?? "";
+                if (existingBubbleId) {
+                    updateBubbleById(existingBubbleId, { text });
+                } else {
+                    const bid = nextId();
+                    codexItemMapRef.current.set(itemId, bid);
+                    setBubbles((prev) => [
+                        ...prev,
+                        {
+                            id: bid,
+                            kind: "text",
+                            groupId: groupRef.current,
+                            text,
+                        } as Bubble,
+                    ]);
+                }
+                break;
+            }
+
+            // -- Streaming text: agent reasoning --
+            case "reasoning": {
+                const text: string = item.text ?? "";
+                if (existingBubbleId) {
+                    updateBubbleById(existingBubbleId, { text });
+                } else {
+                    const bid = nextId();
+                    codexItemMapRef.current.set(itemId, bid);
+                    setBubbles((prev) => [
+                        ...prev,
+                        {
+                            id: bid,
+                            kind: "thinking",
+                            groupId: groupRef.current,
+                            text,
+                        } as Bubble,
+                    ]);
+                }
+                break;
+            }
+
+            // -- Command execution: show on completion --
+            case "command_execution":
+                if (eventType === "item.completed") {
+                    appendBubble("tool_use", {
+                        toolName: item.command ?? "command",
+                        toolInput: {
+                            command: item.command,
+                            aggregated_output: item.aggregated_output,
+                            exit_code: item.exit_code,
+                        } as any,
+                    });
+                }
+                break;
+
+            // -- File changes: show on completion --
+            case "file_change":
+                if (eventType === "item.completed") {
+                    const changes = (item.changes ?? []) as Array<{
+                        path: string;
+                        kind: string;
+                    }>;
+                    const summary = changes
+                        .map((c) => `${c.kind} ${c.path}`)
+                        .join(", ");
+                    appendBubble("system", {
+                        systemSubtype: "file",
+                        systemDetail: `Files ${item.status}: ${summary || "no changes"}`,
+                    });
+                }
+                break;
+
+            // -- MCP tool call: show on completion --
+            case "mcp_tool_call":
+                if (eventType === "item.completed") {
+                    appendBubble("tool_use", {
+                        toolName: `${item.server ?? "mcp"}/${item.tool ?? "unknown"}`,
+                        toolInput: item.arguments as any,
+                    });
+                }
+                break;
+
+            // -- Web search: show as system bubble --
+            case "web_search":
+                if (eventType === "item.completed") {
+                    appendBubble("system", {
+                        systemSubtype: "search",
+                        systemDetail: `Web search: ${item.query ?? ""}`,
+                    });
+                }
+                break;
+
+            // -- Todo list: show as system bubble --
+            case "todo_list":
+                if (eventType === "item.completed") {
+                    const items: Array<{ text: string; completed: boolean }> =
+                        item.items ?? [];
+                    const done = items.filter((t) => t.completed).length;
+                    appendBubble("system", {
+                        systemSubtype: "plan",
+                        systemDetail: `Plan: ${done}/${items.length} tasks`,
+                        text: items.map((t) => `- [${t.completed ? "x" : " "}] ${t.text}`).join("\n"),
+                    });
+                }
+                break;
+
+            // -- Error item --
+            case "error":
+                appendBubble("system", {
+                    systemSubtype: "error",
+                    text: item.message ?? "Unknown error",
+                });
+                break;
+        }
+    }
+
+    /** Top-level Codex SDK ThreadEvent dispatcher. */
+    function handleCodexSDKEvent(parsed: any): boolean {
+        // Quick guard: only handle known Codex SDK event types
+        const isCodexType =
+            parsed.type &&
+            (parsed.type.startsWith("thread.") ||
+                parsed.type.startsWith("turn.") ||
+                parsed.type.startsWith("item."));
+        const isStreamError =
+            parsed.type === "error" &&
+            typeof parsed.message === "string" &&
+            !parsed.item;
+        if (!isCodexType && !isStreamError) {
+            return false;
+        }
+
+        switch (parsed.type) {
+            case "thread.started":
+                // Store thread_id for later resumption (server-side persists it)
+                appendBubble("system", {
+                    systemSubtype: "init",
+                    systemDetail: `Codex thread ready`,
+                });
+                break;
+
+            case "turn.started":
+                // New turn — nothing to show
+                break;
+
+            case "item.started":
+            case "item.updated":
+            case "item.completed":
+                if (parsed.item) {
+                    handleCodexItem(parsed.item, parsed.type);
+                }
+                break;
+
+            case "turn.completed":
+                if (parsed.usage) {
+                    appendBubble("result", {
+                        usage: {
+                            input_tokens: parsed.usage.input_tokens ?? 0,
+                            output_tokens: parsed.usage.output_tokens ?? 0,
+                        },
+                    });
+                }
+                break;
+
+            case "turn.failed":
+                appendBubble("system", {
+                    systemSubtype: "error",
+                    text: parsed.error?.message ?? "Turn failed",
+                });
+                break;
+
+            case "error":
+                // Top-level stream error (non-item)
+                if (isStreamError) {
+                    appendBubble("system", {
+                        systemSubtype: "error",
+                        text: parsed.message ?? "Stream error",
+                    });
+                }
+                break;
+        }
+
+        return true;
+    }
+
+    // ---- OpenCode ACP parsing ----
 
     function parseOpenCodeUpdate(notif: {
         sessionId: string;
@@ -226,6 +451,12 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         // --- OpenCode ACP format ---
         if (parsed.sessionId && parsed.update?.sessionUpdate) {
             parseOpenCodeUpdate(parsed);
+            return;
+        }
+
+        // --- Codex SDK format ---
+        // ThreadEvent types: thread.*, turn.*, item.*, error
+        if (handleCodexSDKEvent(parsed)) {
             return;
         }
 
@@ -393,6 +624,7 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
 
         // Start a new group for this conversation turn
         groupRef.current = nextId();
+        codexItemMapRef.current.clear();
 
         // Add user bubble
         appendBubble("user", { text });

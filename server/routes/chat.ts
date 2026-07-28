@@ -5,6 +5,7 @@ import { handleOpenCode } from "../agnets/handleOpenCode";
 import { BrowserWindow } from "electron";
 import { handleKimiCode } from "../agnets/handleKimiCode";
 import { handleCodex } from "../agnets/handleCodex";
+import { handleCodexSDK } from "../agnets/handleCodexSDK";
 
 export const createChatRouter = async ({
     win,
@@ -60,6 +61,14 @@ export const createChatRouter = async ({
                 req,
                 res,
                 message,
+            });
+        } else if (message && slug === "openai-codex-sdk") {
+            handleCodexSDK({
+                workspacePath,
+                req,
+                res,
+                message,
+                conversationId: req.body.conversationId,
             });
         }
     });
