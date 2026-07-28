@@ -82,10 +82,12 @@ export const handleCodex = ({
     req,
     res,
     message,
+    workspacePath = "",
 }: {
     req: any;
     res: any;
     message: string;
+    workspacePath?: string;
 }) => {
     // --- SSE headers ---
     res.writeHead(200, {

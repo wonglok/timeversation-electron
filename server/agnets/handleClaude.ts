@@ -82,10 +82,12 @@ export const handleClaude = ({
     req,
     res,
     message,
+    workspacePath = "",
 }: {
     req: any;
     res: any;
     message: string;
+    workspacePath?: string;
 }) => {
     const config = {
         cmd: "claude",
