@@ -28,10 +28,19 @@ interface ThreadSchema {
 
 const threadCache = new Map<string, Low<ThreadSchema>>();
 
+// conversationId is always a crypto.randomUUID() — safe against traversal,
+// but we validate for defense-in-depth.
+function validateId(id: string) {
+    if (!/^[a-f0-9-]{36}$/.test(id)) {
+        throw new Error("Invalid UUID");
+    }
+}
+
 export async function getThreadDb(
     workspacePath: string | undefined,
     conversationId: string,
 ) {
+    validateId(conversationId);
     const dbDir = path.join(
         workspacePath ?? process.cwd(),
         "conversations",

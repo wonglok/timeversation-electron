@@ -268,6 +268,12 @@ export function Chat() {
                                 : `${parsed.tools?.length ?? 0} tools available`,
                         });
                         break;
+                    case "session_load":
+                        // The server is replaying a loaded session's full
+                        // history — clear existing bubbles so we don't
+                        // duplicate messages already shown from the thread.
+                        setBubbles([]);
+                        break;
                     case "hook_response":
                         if (parsed.stderr) {
                             appendBubble("system", {

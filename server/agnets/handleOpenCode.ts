@@ -187,21 +187,25 @@ export const handleOpenCode = async ({
                 const conv = db.data.conversations.find((c) => c.id === convId);
 
                 if (conv?.sessionId) {
-                    // Reuse the same session for context continuity
+                    // Load the stored session to restore full conversation
+                    // context.  `session/load` replays history back to the
+                    // client via notifications AND restores the agent's
+                    // internal state so it remembers prior turns.
                     writeSSEEvent(
                         res,
                         JSON.stringify({
                             type: "system",
-                            subtype: "session_resume",
+                            subtype: "session_load",
                             sessionId: conv.sessionId,
                             conversationId: convId,
                         }),
                     );
 
-                    await ctx.request(methods.agent.session.resume, {
+                    await ctx.request(methods.agent.session.load, {
                         cwd: cwd,
                         sessionId: conv.sessionId,
                         mcpServers: [],
+                        _meta: { conversationId: convId },
                     });
 
                     activeSessionId = conv.sessionId;
