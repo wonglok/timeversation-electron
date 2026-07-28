@@ -6,6 +6,8 @@ import { Router } from "express";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { JSONFilePreset } from "lowdb/node";
+import type { Low } from "lowdb";
+import { getThreadMessages, deleteThread } from "../store/threadStore";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,6 +17,7 @@ export interface Conversation {
     id: string;
     title: string;
     agentSlug: string;
+    sessionId?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -32,6 +35,26 @@ function now(): string {
 }
 
 // ---------------------------------------------------------------------------
+// Shared lowdb instance (cached per file path so router + agent handlers
+// share the same in-memory data and don't lose writes).
+// ---------------------------------------------------------------------------
+
+const dbCache = new Map<string, Low<DbSchema>>();
+
+export async function getConversationsDb(workspacePath?: string) {
+    const dbDir = path.join(workspacePath ?? process.cwd(), "conversations");
+    mkdirSync(dbDir, { recursive: true });
+    const dbFile = path.join(dbDir, "db.json");
+
+    const cached = dbCache.get(dbFile);
+    if (cached) return cached;
+
+    const db = await JSONFilePreset<DbSchema>(dbFile, { conversations: [] });
+    dbCache.set(dbFile, db);
+    return db;
+}
+
+// ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
 
@@ -40,13 +63,7 @@ export async function createConversationsRouter({
 }: {
     workspacePath?: string;
 }) {
-    const dbDir = path.join(workspacePath ?? process.cwd(), "conversations");
-    mkdirSync(dbDir, { recursive: true });
-    const dbFile = path.join(dbDir, "db.json");
-
-    const db = await JSONFilePreset<DbSchema>(dbFile, {
-        conversations: [],
-    });
+    const db = await getConversationsDb(workspacePath);
 
     const router = Router();
 
@@ -127,7 +144,7 @@ export async function createConversationsRouter({
     });
 
     // -----------------------------------------------------------------------
-    // DELETE /api/conversations/:id — delete a conversation
+    // DELETE /api/conversations/:id — delete a conversation and its thread
     // -----------------------------------------------------------------------
     router.delete("/:id", async (req, res) => {
         const idx = db.data.conversations.findIndex(
@@ -141,7 +158,21 @@ export async function createConversationsRouter({
         db.data.conversations.splice(idx, 1);
         await db.write();
 
+        // Clean up the thread file
+        await deleteThread(workspacePath, req.params.id);
+
         res.json({ ok: true });
+    });
+
+    // -----------------------------------------------------------------------
+    // GET /api/conversations/:id/thread — load all messages for a conversation
+    // -----------------------------------------------------------------------
+    router.get("/:id/thread", async (req, res) => {
+        const messages = await getThreadMessages(
+            workspacePath,
+            req.params.id,
+        );
+        res.json(messages);
     });
 
     return router;

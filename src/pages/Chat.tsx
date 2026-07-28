@@ -31,13 +31,15 @@ export function Chat() {
     const navigate = useNavigate();
     const agent = BUILTIN_AGENTS.find((a) => a.slug === slug);
 
-    const { activeId, createConversation } = useConversationsStore();
+    const { activeId, createConversation, fetchThread } =
+        useConversationsStore();
 
     const [bubbles, setBubbles] = useState<Bubble[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
+    const loadedConvRef = useRef<string | undefined>(undefined);
 
     // Auto-scroll to bottom when bubbles change
     useEffect(() => {
@@ -45,6 +47,27 @@ export function Chat() {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [bubbles]);
+
+    // Load thread messages when opening an existing conversation
+    useEffect(() => {
+        if (!conversationId || conversationId === loadedConvRef.current) return;
+        loadedConvRef.current = conversationId;
+
+        fetchThread(conversationId).then((messages) => {
+            if (!messages.length) return;
+            const loaded: Bubble[] = [];
+            for (const msg of messages) {
+                const group = nextId();
+                loaded.push({
+                    id: nextId(),
+                    kind: msg.role === "user" ? "user" : "text",
+                    groupId: group,
+                    text: msg.content,
+                } as Bubble);
+            }
+            setBubbles(loaded);
+        });
+    }, [conversationId, fetchThread]);
 
     // Clean up any in-flight stream on unmount
     useEffect(() => {

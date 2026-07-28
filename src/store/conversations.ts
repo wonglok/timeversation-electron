@@ -14,8 +14,16 @@ export interface Conversation {
     id: string;
     title: string;
     agentSlug: string;
+    sessionId?: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface ThreadMessage {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    timestamp: string;
 }
 
 interface ConversationsState {
@@ -31,6 +39,7 @@ interface ConversationsState {
     }) => Promise<Conversation | null>;
     deleteConversation: (id: string) => Promise<void>;
     setActiveId: (id: string | null) => void;
+    fetchThread: (conversationId: string) => Promise<ThreadMessage[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,5 +108,18 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
 
     setActiveId: (id) => {
         set({ activeId: id });
+    },
+
+    fetchThread: async (conversationId) => {
+        try {
+            const res = await fetch(
+                `${API_BASE}/api/conversations/${conversationId}/thread`,
+                { mode: "cors" },
+            );
+            if (!res.ok) return [];
+            return await res.json();
+        } catch {
+            return [];
+        }
     },
 }));
