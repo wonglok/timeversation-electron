@@ -72,6 +72,16 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         homepage: "https://docs.anthropic.com/en/docs/claude-code",
         icon: ClaudeCodeColor,
     },
+    {
+        name: "Claude Code Session",
+        slug: "claude-code-session",
+        cliName: "claude",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Claude Code with persistent session & conversation tracking",
+        homepage: "https://docs.anthropic.com/en/docs/claude-code",
+        icon: ClaudeCodeColor,
+    },
     // {
     //     name: "OpenAI Codex CLI",
     //     slug: "openai-codex-cli",

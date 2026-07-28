@@ -2,6 +2,9 @@ import { app } from "electron";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { getConversationsDb } from "../routes/conversations";
+import { appendThreadMessage } from "../store/threadStore";
+
 // ============================================================================
 // SSE encoder helpers
 // ============================================================================
@@ -36,7 +39,7 @@ function writeSSEEvent(
     } else {
         // Split on \n so each physical line gets its own `data:` prefix
         for (const line of data.split("\n")) {
-            parts.push(encodeLine("data", line));
+            parts.push(encodeLine("data", `${line}\n`));
         }
     }
 
@@ -55,53 +58,23 @@ function writeSSEEvent(
 }
 
 // ============================================================================
-// Agent config registry
+// Claude Session handler — full conversation + session persistence via
+// the Claude Code CLI (`--continue` with per-conversation working directory).
 // ============================================================================
 
-interface AgentConfig {
-    cmd: string;
-    args: string[];
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/** Resolve CLI args, injecting the user message for the placeholder token */
-function resolveArgs(config: AgentConfig, message: string): string[] {
-    const resolved = config.args.map((arg) =>
-        arg === "__REPLACE_ME_WITH_PROMPT__" ? message : arg,
-    );
-    // Append -- so the user message is never interpreted as a flag,
-    // regardless of which agent config is used.
-    resolved.push("--");
-    return resolved;
-}
-
-export const handleClaude = ({
+export const handleClaudeSession = async ({
     req,
     res,
     message,
     workspacePath = "",
+    conversationId,
 }: {
     req: any;
     res: any;
     message: string;
     workspacePath?: string;
+    conversationId?: string;
 }) => {
-    const config = {
-        cmd: "claude",
-        args: [
-            "-p",
-            "__REPLACE_ME_WITH_PROMPT__",
-            "--print",
-            "--output-format",
-            "stream-json",
-            "--verbose",
-            "--continue",
-        ],
-    };
-
     // --- SSE headers ---
     res.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -113,91 +86,159 @@ export const handleClaude = ({
     // Send an initial comment to flush headers
     res.write(encoder.encode(":ok\r\n\r\n"));
 
-    const resolvedArgs = resolveArgs(config, message);
+    // --- Resolve session directory from stored sessionId ---
+    const appDataPath = app.getPath("appData");
+    let sessionId: string;
+    let sessionPath: string;
 
-    let appDataPath = app.getPath("appData");
-    let sessionID = `${req.body.sessionID || crypto.randomUUID()}`;
-    let sessionPath = `${path.join(appDataPath, "session", sessionID)}`;
-
-    if (sessionPath) {
+    if (conversationId) {
         try {
-            mkdirSync(sessionPath, { recursive: true });
-        } catch (e) {}
+            const db = await getConversationsDb(workspacePath);
+            const conv = db.data.conversations.find(
+                (c) => c.id === conversationId,
+            );
+            if (conv?.sessionId) {
+                // Reuse the existing session directory so --continue picks up
+                // prior conversation context.
+                sessionId = conv.sessionId;
+            } else {
+                // First turn — generate a new session id and persist it.
+                sessionId = crypto.randomUUID();
+                if (conv) {
+                    conv.sessionId = sessionId;
+                    conv.updatedAt = new Date().toISOString();
+                    await db.write();
+                }
+            }
+        } catch (_) {
+            sessionId = crypto.randomUUID();
+        }
+    } else {
+        // No conversation tracking — one-off session
+        sessionId = crypto.randomUUID();
     }
 
-    console.log(sessionPath);
+    sessionPath = path.join(appDataPath, "session", sessionId);
+    try {
+        mkdirSync(sessionPath, { recursive: true });
+    } catch (_) {
+        // Directory already exists — fine
+    }
 
-    const proc = spawn(config.cmd, resolvedArgs, {
+    // --- Persist user message to thread store ---
+    if (conversationId) {
+        appendThreadMessage(workspacePath, conversationId, "user", message);
+    }
+
+    // Accumulate assistant output lines for thread persistence.
+    // Claude Code stream-json wraps the actual text in `assistant` events
+    // with `text` content blocks — we accumulate raw lines and extract
+    // text during the final flush.
+    let assistantText = "";
+
+    // --- CLI args ---
+    // --continue resumes the conversation in this project directory.
+    // Since we use a per-conversation cwd, Claude Code maintains isolated
+    // session state for each conversation automatically.
+    const args = [
+        "-p",
+        message,
+        "--print",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--continue",
+    ];
+
+    // --- Spawn claude process ---
+    const proc = spawn("claude", args, {
         env: process.env,
         cwd: sessionPath,
-        stdio: ["pipe", "pipe", "pipe"],
+        stdio: ["ignore", "pipe", "pipe"],
     });
 
-    // --- UTF-8 text decoders for each stream ---
+    // --- UTF-8 decoders ---
     const stdoutDecoder = new TextDecoder();
     const stderrDecoder = new TextDecoder();
 
-    // --- Per-stream partial-line buffers ---
     let stdoutBuf = "";
     let stderrBuf = "";
 
-    /**
-     * Feed a raw Uint8Array chunk through a TextDecoder, then emit every
-     * *complete* line to the SSE writer, keeping trailing partial text in bufRef.
-     */
     function pipeChunk(
         raw: Buffer,
         decoder: TextDecoder,
         bufRef: { buf: string },
         writeLine: (line: string) => void,
     ) {
-        // Decode incrementally — handles split multi-byte UTF-8 codepoints
         const text = decoder.decode(raw, { stream: true });
         bufRef.buf += text;
-
-        // Split on LF, preserving empty lines between consecutive LFs
         const lines = bufRef.buf.split("\n");
         bufRef.buf = lines.pop() ?? "";
-
         for (const line of lines) {
             writeLine(line);
         }
     }
 
-    /** Flush any remaining decoded bytes from a decoder + buffer */
     function flushDecoder(
         decoder: TextDecoder,
         bufRef: { buf: string },
         writeSSE: (data: string, event?: string) => void,
         event?: string,
     ) {
-        // Final decode pass to flush any buffered UTF-8 continuation bytes
         const tail = decoder.decode();
         bufRef.buf += tail;
-
         if (bufRef.buf) {
             writeSSE(bufRef.buf, event);
             bufRef.buf = "";
         }
     }
 
-    // --- stdout → SSE data chunks ---
+    // --- stdout → SSE ---
     proc.stdout.on("data", (raw: Buffer) => {
         pipeChunk(raw, stdoutDecoder, { buf: stdoutBuf }, (line) => {
+            // Collect text from assistant message blocks for thread persistence
+            try {
+                const parsed = JSON.parse(line);
+                if (parsed.type === "assistant") {
+                    const blocks = parsed.message?.content;
+                    if (Array.isArray(blocks)) {
+                        for (const block of blocks) {
+                            if (block.type === "text" && block.text) {
+                                assistantText += block.text;
+                            }
+                        }
+                    }
+                }
+            } catch (_) {
+                // Non-JSON line (e.g. raw text) — still forward it
+            }
             writeSSEEvent(res, line);
         });
     });
 
-    // // --- stderr → SSE named-event chunks ---
-    // proc.stderr.on("data", (raw: Buffer) => {
-    //     pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
-    //         writeSSEEvent(res, line, "stderr"),
-    //     );
-    // });
+    // --- stderr → SSE named events ---
+    proc.stderr.on("data", (raw: Buffer) => {
+        pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
+            writeSSEEvent(res, line, "stderr"),
+        );
+    });
+
+    // --- Process spawn error ---
+    proc.on("error", (err) => {
+        writeSSEEvent(res, err.message, "error");
+        res.end();
+    });
+
+    // --- Client disconnect → kill process ---
+    req.on("close", () => {
+        if (proc.exitCode === null && !proc.killed) {
+            proc.kill();
+        }
+    });
 
     // --- Process complete ---
-    proc.on("close", (code, signal) => {
-        // Flush any trailing UTF-8 bytes and partial lines
+    proc.on("close", async (code, signal) => {
+        // Flush any trailing bytes
         flushDecoder(
             stdoutDecoder,
             { buf: stdoutBuf },
@@ -209,6 +250,16 @@ export const handleClaude = ({
             writeSSEEvent.bind(null, res),
             "stderr",
         );
+
+        // Persist accumulated assistant text to thread
+        if (conversationId && assistantText.trim()) {
+            await appendThreadMessage(
+                workspacePath,
+                conversationId,
+                "assistant",
+                assistantText.trim(),
+            );
+        }
 
         if (code === 0) {
             writeSSEEvent(res, "[DONE]");
@@ -227,18 +278,4 @@ export const handleClaude = ({
         }
         res.end();
     });
-
-    // // --- Process spawn error ---
-    // proc.on("error", (err) => {
-    //     writeSSEEvent(res, err.message, "error");
-    //     res.end();
-    // });
-
-    // // --- Client disconnect → kill running process ---
-    // req.on("close", () => {
-    //     // Only kill if the process is still running (exitCode stays null until exit)
-    //     if (proc.exitCode === null && !proc.killed) {
-    //         proc.kill();
-    //     }
-    // });
 };

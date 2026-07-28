@@ -6,6 +6,7 @@ import { BrowserWindow } from "electron";
 import { handleKimiCode } from "../agnets/handleKimiCode";
 import { handleCodex } from "../agnets/handleCodex";
 import { handleCodexSDK } from "../agnets/handleCodexSDK";
+import { handleClaudeSession } from "../agnets/handleClaudeSession";
 
 export const createChatRouter = async ({
     win,
@@ -40,6 +41,14 @@ export const createChatRouter = async ({
                 req,
                 res,
                 message,
+            });
+        } else if (message && slug === "claude-code-session") {
+            handleClaudeSession({
+                workspacePath,
+                req,
+                res,
+                message,
+                conversationId: req.body.conversationId,
             });
         } else if (message && slug === "opencode") {
             handleOpenCode({
