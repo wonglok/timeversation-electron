@@ -36,6 +36,7 @@ export function Home() {
 
     return (
         <main className="flex flex-col items-center px-8 pt-16 pb-24 min-h-screen">
+            <div id="addme"></div>
             {/* ---- Hero ---- */}
             <section className="flex flex-col items-center text-center max-w-[680px] gap-5 pt-8">
                 {/* Badge */}

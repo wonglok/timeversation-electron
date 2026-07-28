@@ -62,23 +62,24 @@ export interface AgentDefinition {
  */
 
 export const BUILTIN_AGENTS: AgentDefinition[] = [
+    // {
+    //     name: "Claude Code",
+    //     slug: "claude-code",
+    //     cliName: "claude",
+    //     detectionArgs: ["--version"],
+    //     versionRegex: /(\d+\.\d+\.\d+)/,
+    //     description: "Anthropic's agentic coding CLI tool",
+    //     homepage: "https://docs.anthropic.com/en/docs/claude-code",
+    //     icon: ClaudeCodeColor,
+    // },
     {
         name: "Claude Code",
-        slug: "claude-code",
-        cliName: "claude",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Anthropic's agentic coding CLI tool",
-        homepage: "https://docs.anthropic.com/en/docs/claude-code",
-        icon: ClaudeCodeColor,
-    },
-    {
-        name: "Claude Code Session",
         slug: "claude-code-session",
         cliName: "claude",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Claude Code with persistent session & conversation tracking",
+        description:
+            "Claude Code with persistent session & conversation tracking",
         homepage: "https://docs.anthropic.com/en/docs/claude-code",
         icon: ClaudeCodeColor,
     },

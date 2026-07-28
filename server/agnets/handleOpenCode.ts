@@ -1,3 +1,6 @@
+import { app } from "electron";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import { client, ndJsonStream, methods } from "@agentclientprotocol/sdk";
@@ -57,11 +60,13 @@ export const handleOpenCode = async ({
     res,
     message,
     workspacePath = "",
+    conversationId,
 }: {
     req: any;
     res: any;
     message: string;
     workspacePath?: string;
+    conversationId?: string;
 }) => {
     // --- SSE headers ---
     res.writeHead(200, {
@@ -72,7 +77,15 @@ export const handleOpenCode = async ({
     });
     res.write(encoder.encode(":ok\r\n\r\n"));
 
-    const cwd = workspacePath || process.cwd();
+    // --- Resolve session directory ---
+    const appDataPath = app.getPath("appData");
+    const dirSessionId = conversationId || crypto.randomUUID();
+    const sessionPath = path.join(appDataPath, "session", dirSessionId);
+    try {
+        mkdirSync(sessionPath, { recursive: true });
+    } catch (_) {
+        // Directory already exists — fine
+    }
     let done = false;
     const end = () => {
         if (!done) {
@@ -84,7 +97,7 @@ export const handleOpenCode = async ({
     // --- Spawn opencode in ACP mode ---
     const proc = spawn("opencode", ["acp"], {
         env: process.env,
-        cwd,
+        cwd: sessionPath,
         stdio: ["pipe", "pipe", "inherit"],
     });
 
@@ -177,7 +190,7 @@ export const handleOpenCode = async ({
                 JSON.stringify({
                     type: "system",
                     subtype: "init",
-                    cwd,
+                    cwd: sessionPath,
                     session_id: init?.sessionId ?? null,
                     model: init?.agentMetadata?.model ?? "unknown",
                 }),
@@ -186,7 +199,7 @@ export const handleOpenCode = async ({
             // Resolve the agent-side session — reuse an existing one when the
             // conversation already has a stored sessionId so context is preserved
             // across turns, otherwise create a fresh session.
-            const convId: string | undefined = req.body.conversationId;
+            const convId: string | undefined = conversationId;
             let activeSessionId: string;
 
             if (convId) {
@@ -213,7 +226,7 @@ export const handleOpenCode = async ({
                     // bubbles — it already has thread messages.
                     suppressForwarding = true;
                     await ctx.request(methods.agent.session.load, {
-                        cwd: cwd,
+                        cwd: sessionPath,
                         sessionId: conv.sessionId,
                         mcpServers: [],
                         _meta: { conversationId: convId },
@@ -226,7 +239,7 @@ export const handleOpenCode = async ({
                     const created: any = await ctx.request(
                         methods.agent.session.new,
                         {
-                            cwd: cwd,
+                            cwd: sessionPath,
                             mcpServers: [],
                             _meta: { conversationId: convId },
                         },
@@ -251,7 +264,7 @@ export const handleOpenCode = async ({
                     // Conversation not found in DB — one-off session
                     const created: any = await ctx.request(
                         methods.agent.session.new,
-                        { cwd: cwd, mcpServers: [] },
+                        { cwd: sessionPath, mcpServers: [] },
                     );
                     activeSessionId = created.sessionId;
                 }
@@ -259,7 +272,7 @@ export const handleOpenCode = async ({
                 // No conversation tracking — one-off session
                 const created: any = await ctx.request(
                     methods.agent.session.new,
-                    { cwd: cwd, mcpServers: [] },
+                    { cwd: sessionPath, mcpServers: [] },
                 );
                 activeSessionId = created.sessionId;
 

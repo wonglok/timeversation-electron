@@ -1,3 +1,6 @@
+import { app } from "electron";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import { Codex } from "@openai/codex-sdk";
 import { getConversationsDb } from "../routes/conversations";
 import { appendThreadMessage } from "../store/threadStore";
@@ -82,7 +85,15 @@ export const handleCodexSDK = async ({
     // Send an initial comment to flush headers
     res.write(encoder.encode(":ok\r\n\r\n"));
 
-    const cwd = workspacePath || process.cwd();
+    // --- Resolve session directory ---
+    const appDataPath = app.getPath("appData");
+    const dirSessionId = conversationId || crypto.randomUUID();
+    const sessionPath = path.join(appDataPath, "session", dirSessionId);
+    try {
+        mkdirSync(sessionPath, { recursive: true });
+    } catch (_) {
+        // Directory already exists — fine
+    }
 
     // Abort controller so we can cancel the turn when the client disconnects
     const ac = new AbortController();
@@ -106,7 +117,7 @@ export const handleCodexSDK = async ({
             if (conv?.sessionId) {
                 // Resume the existing Codex thread so context carries over
                 thread = codex.resumeThread(conv.sessionId, {
-                    workingDirectory: cwd,
+                    workingDirectory: sessionPath,
                     skipGitRepoCheck: true,
                 });
                 threadId = conv.sessionId;
@@ -126,7 +137,7 @@ export const handleCodexSDK = async ({
 
     if (!thread) {
         thread = codex.startThread({
-            workingDirectory: cwd,
+            workingDirectory: sessionPath,
             skipGitRepoCheck: true,
         });
     }

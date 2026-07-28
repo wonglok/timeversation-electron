@@ -56,6 +56,7 @@ export const createChatRouter = async ({
                 req,
                 res,
                 message,
+                conversationId: req.body.conversationId,
             });
         } else if (message && slug === "kimi-code") {
             handleKimiCode({
@@ -63,6 +64,7 @@ export const createChatRouter = async ({
                 req,
                 res,
                 message,
+                conversationId: req.body.conversationId,
             });
         } else if (message && slug === "openai-codex-cli") {
             handleCodex({
