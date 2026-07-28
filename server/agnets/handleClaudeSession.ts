@@ -148,6 +148,7 @@ export const handleClaudeSession = async ({
         "stream-json",
         "--verbose",
         "--continue",
+        "--dangerously-skip-permissions",
     ];
 
     // --- Spawn claude process ---
