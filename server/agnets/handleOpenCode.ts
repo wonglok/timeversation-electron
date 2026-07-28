@@ -266,6 +266,10 @@ export const handleOpenCode = async ({
                 appendThreadMessage(workspacePath, convId, "user", message);
             }
 
+            // Reset accumulated text so we only capture the new response,
+            // not replayed history from a session/load.
+            assistantText = "";
+
             // Prompt against the resolved session.  Session updates (text
             // chunks, tool calls, etc.) are forwarded to the client by the
             // onNotification handler registered above.
