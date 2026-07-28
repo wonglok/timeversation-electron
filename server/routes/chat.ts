@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { handleClaude } from "../agnets/handleClaude";
+// import { handleClaude } from "../agnets/handleClaude";
 import { handleOpenCode } from "../agnets/handleOpenCode";
 // import { handleCodex } from "../agnets/handleCodex";
 import { BrowserWindow } from "electron";
 import { handleKimiCode } from "../agnets/handleKimiCode";
-import { handleCodex } from "../agnets/handleCodex";
+// import { handleCodex } from "../agnets/handleCodex";
 import { handleCodexSDK } from "../agnets/handleCodexSDK";
 import { handleClaudeSession } from "../agnets/handleClaudeSession";
 
@@ -35,13 +35,7 @@ export const createChatRouter = async ({
             return;
         }
 
-        if (message && slug === "claude-code") {
-            handleClaude({
-                workspacePath,
-                req,
-                res,
-                message,
-            });
+        if (false) {
         } else if (message && slug === "claude-code-session") {
             handleClaudeSession({
                 workspacePath,
@@ -65,13 +59,6 @@ export const createChatRouter = async ({
                 res,
                 message,
                 conversationId: req.body.conversationId,
-            });
-        } else if (message && slug === "openai-codex-cli") {
-            handleCodex({
-                workspacePath,
-                req,
-                res,
-                message,
             });
         } else if (message && slug === "openai-codex-sdk") {
             handleCodexSDK({
