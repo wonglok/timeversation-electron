@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { handleClaude } from "../agnets/handleClaude";
 import { handleOpenCode } from "../agnets/handleOpenCode";
-import { handleCodex } from "../agnets/handleCodex";
+// import { handleCodex } from "../agnets/handleCodex";
 import { BrowserWindow } from "electron";
+import { handleKimiCode } from "../agnets/handleKimiCode";
+import { handleCodex } from "../agnets/handleCodex";
 
 export const createChatRouter = async ({
     win,
@@ -40,6 +42,13 @@ export const createChatRouter = async ({
             });
         } else if (message && slug === "opencode") {
             handleOpenCode({
+                workspacePath,
+                req,
+                res,
+                message,
+            });
+        } else if (message && slug === "kimi-code") {
+            handleKimiCode({
                 workspacePath,
                 req,
                 res,

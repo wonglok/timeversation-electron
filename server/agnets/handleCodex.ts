@@ -36,7 +36,7 @@ function writeSSEEvent(
     } else {
         // Split on \n so each physical line gets its own `data:` prefix
         for (const line of data.split("\n")) {
-            parts.push(encodeLine("data", line));
+            parts.push(encodeLine("data", `${line}\n`));
         }
     }
 

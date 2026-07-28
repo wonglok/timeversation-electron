@@ -111,9 +111,7 @@ export async function createConversationsRouter({
     // GET /api/conversations/:id — get a single conversation
     // -----------------------------------------------------------------------
     router.get("/:id", (req, res) => {
-        const conv = db.data.conversations.find(
-            (c) => c.id === req.params.id,
-        );
+        const conv = db.data.conversations.find((c) => c.id === req.params.id);
         if (!conv) {
             res.status(404).json({ error: "Conversation not found" });
             return;
@@ -125,9 +123,7 @@ export async function createConversationsRouter({
     // PATCH /api/conversations/:id — update conversation (rename title)
     // -----------------------------------------------------------------------
     router.patch("/:id", async (req, res) => {
-        const conv = db.data.conversations.find(
-            (c) => c.id === req.params.id,
-        );
+        const conv = db.data.conversations.find((c) => c.id === req.params.id);
         if (!conv) {
             res.status(404).json({ error: "Conversation not found" });
             return;
@@ -168,10 +164,7 @@ export async function createConversationsRouter({
     // GET /api/conversations/:id/thread — load all messages for a conversation
     // -----------------------------------------------------------------------
     router.get("/:id/thread", async (req, res) => {
-        const messages = await getThreadMessages(
-            workspacePath,
-            req.params.id,
-        );
+        const messages = await getThreadMessages(workspacePath, req.params.id);
         res.json(messages);
     });
 

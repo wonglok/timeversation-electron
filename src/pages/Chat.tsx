@@ -58,11 +58,13 @@ export function Chat() {
                     </div>
                 </header>
 
-                <ChatBox
-                    key={JSON.stringify({ conversationId, slug })}
-                    agentSlug={agent.slug}
-                    agentName={agent.name}
-                />
+                {conversationId && (
+                    <ChatBox
+                        key={JSON.stringify({ conversationId, slug, agent })}
+                        agentSlug={agent.slug}
+                        agentName={agent.name}
+                    />
+                )}
             </div>
         </main>
     );

@@ -94,16 +94,16 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         icon: OpenCodeIcon,
     },
 
-    // {
-    //     name: "Kimi Code",
-    //     slug: "kimi-code",
-    //     cliName: "kimi",
-    //     detectionArgs: ["--version"],
-    //     versionRegex: /(\d+\.\d+\.\d+)/,
-    //     description: "Moonshot AI's Kimi-powered coding agent",
-    //     homepage: "https://github.com/MoonshotAI/kimi-code",
-    //     icon: KimiColor,
-    // },
+    {
+        name: "Kimi Code",
+        slug: "kimi-code",
+        cliName: "kimi",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Moonshot AI's Kimi-powered coding agent",
+        homepage: "https://github.com/MoonshotAI/kimi-code",
+        icon: KimiColor,
+    },
 
     // {
     //     name: "Qwen Code",
