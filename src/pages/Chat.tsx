@@ -66,26 +66,29 @@ export function Chat() {
     const groupRef = useRef<string>("");
 
     // ------------------------------------------------------------------
-    // Append a bubble — merges consecutive text blocks in the same group
+    // Append a bubble — merges consecutive text/thinking chunks in the same group
     // ------------------------------------------------------------------
+    const MERGE_KINDS: Bubble["kind"][] = ["text", "thinking"];
+
     const appendBubble = useCallback(
         (
             kind: Bubble["kind"],
             opts: Partial<Omit<Bubble, "id" | "kind" | "groupId">>,
         ) => {
             setBubbles((prev) => {
-                // Merge consecutive "text" bubbles in the same group
-                if (kind === "text" && opts.text && groupRef.current) {
+                // Merge consecutive text or thinking bubbles in the same group.
+                // OpenCode sends tiny one-word chunks — merging avoids flicker.
+                if (MERGE_KINDS.includes(kind) && opts.text && groupRef.current) {
                     const last = prev[prev.length - 1];
                     if (
                         last &&
                         last.groupId === groupRef.current &&
-                        last.kind === "text"
+                        last.kind === kind
                     ) {
                         const updated = [...prev];
                         updated[prev.length - 1] = {
                             ...last,
-                            text: last.text! + opts.text,
+                            text: (last.text ?? "") + opts.text,
                         };
                         return updated;
                     }
