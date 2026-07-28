@@ -203,3 +203,110 @@ export type AcpEvent =
     | AcpSystemEvent
     | AcpAssistantEvent
     | AcpResultSuccess;
+
+// ============================================================================
+// OpenCode ACP session/update types
+//
+// OpenCode sends `session/update` notifications with a different shape than
+// Claude Code.  Each update has a `sessionUpdate` discriminant field.
+// ============================================================================
+
+export type OpenCodeSessionUpdateKind =
+    | "agent_message_chunk"
+    | "agent_thought_chunk"
+    | "available_commands_update"
+    | "usage_update"
+    | "tool_call"
+    | "tool_call_update"
+    | "plan"
+    | "user_message_chunk"
+    | "current_mode_update";
+
+/** A single text chunk (used by agent_message_chunk and agent_thought_chunk). */
+export interface OpenCodeTextContent {
+    text: string;
+    type: "text";
+}
+
+/** Usage update sent periodically during a turn. */
+export interface OpenCodeUsageUpdate {
+    sessionUpdate: "usage_update";
+    used: number;
+    size: number;
+    cost: { amount: number; currency: string };
+}
+
+/** List of available commands/skills sent at session start. */
+export interface OpenCodeAvailableCommandsUpdate {
+    sessionUpdate: "available_commands_update";
+    availableCommands: Array<{ name: string; description: string }>;
+}
+
+/** Agent thinking chunk (internal reasoning, not shown to user). */
+export interface OpenCodeThoughtChunk {
+    sessionUpdate: "agent_thought_chunk";
+    content: OpenCodeTextContent;
+    messageId: string;
+}
+
+/** Agent message chunk (visible response text). */
+export interface OpenCodeMessageChunk {
+    sessionUpdate: "agent_message_chunk";
+    content: OpenCodeTextContent;
+    messageId: string;
+}
+
+/** Tool call initiated by the agent. */
+export interface OpenCodeToolCall {
+    sessionUpdate: "tool_call";
+    toolCallId: string;
+    title: string;
+    status: "pending" | "in_progress" | "completed" | "failed" | "cancelled";
+    /** Raw tool input, if available. */
+    input?: Record<string, unknown>;
+}
+
+/** Tool call status change. */
+export interface OpenCodeToolCallUpdate {
+    sessionUpdate: "tool_call_update";
+    toolCallId: string;
+    status: string;
+    /** Output from the tool, if completed. */
+    output?: Array<{ type: string; text?: string }>;
+}
+
+/** Plan / execution plan emitted by the agent. */
+export interface OpenCodePlan {
+    sessionUpdate: "plan";
+    plan: unknown;
+}
+
+export interface OpenCodeUserMessageChunk {
+    sessionUpdate: "user_message_chunk";
+    content: OpenCodeTextContent;
+    messageId: string;
+}
+
+/** Current mode change notification. */
+export interface OpenCodeModeUpdate {
+    sessionUpdate: "current_mode_update";
+    mode: string;
+}
+
+/** Union of all opencode session update variants. */
+export type OpenCodeSessionUpdate =
+    | OpenCodeUsageUpdate
+    | OpenCodeAvailableCommandsUpdate
+    | OpenCodeThoughtChunk
+    | OpenCodeMessageChunk
+    | OpenCodeToolCall
+    | OpenCodeToolCallUpdate
+    | OpenCodePlan
+    | OpenCodeUserMessageChunk
+    | OpenCodeModeUpdate;
+
+/** The full session/update notification params from opencode. */
+export interface OpenCodeSessionNotification {
+    sessionId: string;
+    update: OpenCodeSessionUpdate;
+}

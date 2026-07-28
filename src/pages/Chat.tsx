@@ -104,31 +104,114 @@ export function Chat() {
     );
 
     // ------------------------------------------------------------------
+    // OpenCode ACP session/update parser
+    // ------------------------------------------------------------------
+    function parseOpenCodeUpdate(notif: { sessionId: string; update: any }): void {
+        const { update } = notif;
+
+        switch (update.sessionUpdate) {
+            case "agent_message_chunk":
+                // Visible agent response — stream as text
+                if (update.content?.text) {
+                    appendBubble("text", { text: update.content.text });
+                }
+                break;
+
+            case "agent_thought_chunk":
+                // Internal reasoning — show as collapsible thinking
+                if (update.content?.text) {
+                    appendBubble("thinking", { text: update.content.text });
+                }
+                break;
+
+            case "tool_call":
+                appendBubble("tool_use", {
+                    toolName: update.title ?? "unknown",
+                    toolInput: update.input,
+                });
+                break;
+
+            case "tool_call_update":
+                // Status change on an existing tool call — show as system pill
+                if (update.status === "completed" || update.status === "failed") {
+                    appendBubble("system", {
+                        systemSubtype: "tool",
+                        systemDetail: `Tool ${update.toolCallId}: ${update.status}`,
+                    });
+                }
+                break;
+
+            case "usage_update":
+                // Periodic usage — show as result footer at end, skip during stream
+                appendBubble("result", {
+                    usage: {
+                        input_tokens: update.used ?? 0,
+                        output_tokens: 0,
+                    },
+                    cost: update.cost?.amount ?? 0,
+                });
+                break;
+
+            case "plan":
+                // Agent execution plan — skip in chat UI (too verbose)
+                break;
+
+            case "available_commands_update":
+                // Command list sent at session start — skip
+                break;
+
+            case "current_mode_update":
+                appendBubble("system", {
+                    systemSubtype: "mode",
+                    systemDetail: `Mode: ${update.mode}`,
+                });
+                break;
+
+            case "user_message_chunk":
+                // Echo of user message — skip
+                break;
+
+            default:
+                // Unknown update kind — skip
+                break;
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Parse a single NDJSON line into Bubble(s)
+    //
+    // Handles two formats:
+    //   1. Claude Code stream-json → { type: "system"|"assistant"|"result", ... }
+    //   2. OpenCode ACP session/update → { sessionId, update: { sessionUpdate, ... } }
     // ------------------------------------------------------------------
     function parseAcpLine(line: string): void {
         if (!line.trim()) return;
 
-        // console.log(line);
         line = line.trim().replace("data: ", "").replace("event: ", "");
 
-        if (line === ":ok") {
-            return;
-        }
-        if (line === "[DONE]") {
-            return;
-        }
+        if (line === ":ok" || line === "[DONE]") return;
 
         let parsed: any;
         try {
             parsed = JSON.parse(line);
         } catch {
-            // Non-JSON — emit as raw text
             appendBubble("text", { text: line });
             return;
         }
 
-        if (!parsed || typeof parsed !== "object" || !parsed.type) {
+        if (!parsed || typeof parsed !== "object") {
+            appendBubble("text", { text: line });
+            return;
+        }
+
+        // --- OpenCode ACP format: { sessionId, update: { sessionUpdate, ... } } ---
+        if (parsed.sessionId && parsed.update?.sessionUpdate) {
+            parseOpenCodeUpdate(parsed);
+            return;
+        }
+
+        // --- Claude Code stream-json format: { type: "system"|"assistant"|"result", ... } ---
+        if (!parsed.type) {
             appendBubble("text", { text: line });
             return;
         }
@@ -156,7 +239,6 @@ export function Chat() {
                     case "hook_started":
                     case "hook_progress":
                     case "thinking_tokens":
-                        // Too noisy for chat UI — skip
                         break;
                 }
                 break;
@@ -167,9 +249,7 @@ export function Chat() {
                 for (const block of blocks) {
                     switch (block.type) {
                         case "thinking":
-                            appendBubble("thinking", {
-                                text: block.thinking ?? "",
-                            });
+                            appendBubble("thinking", { text: block.thinking ?? "" });
                             break;
                         case "text":
                             appendBubble("text", { text: block.text ?? "" });

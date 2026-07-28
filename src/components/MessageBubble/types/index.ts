@@ -26,6 +26,20 @@ export type {
     AcpModelUsageEntry,
     // Shared
     AcpUsage,
+    // OpenCode ACP session/update
+    OpenCodeSessionNotification,
+    OpenCodeSessionUpdate,
+    OpenCodeSessionUpdateKind,
+    OpenCodeMessageChunk,
+    OpenCodeThoughtChunk,
+    OpenCodeToolCall,
+    OpenCodeToolCallUpdate,
+    OpenCodeUsageUpdate,
+    OpenCodeAvailableCommandsUpdate,
+    OpenCodeTextContent,
+    OpenCodePlan,
+    OpenCodeModeUpdate,
+    OpenCodeUserMessageChunk,
 } from "./acp";
 
 export type {
