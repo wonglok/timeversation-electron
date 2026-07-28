@@ -47,7 +47,7 @@ function writeSSEEvent(
 // Handler — Agent Client Protocol via stdio
 // ============================================================================
 
-export const handleOpenCode = ({
+export const handleOpenCode = async ({
     req,
     res,
     message,
@@ -80,7 +80,7 @@ export const handleOpenCode = ({
     const proc = spawn("opencode", ["acp"], {
         env: process.env,
         cwd,
-        stdio: ["pipe", "pipe", "pipe"],
+        stdio: "pipe", // ["pipe", "pipe", "pipe"],
     });
 
     proc.stdin!.on("error", (err: NodeJS.ErrnoException) => {
@@ -101,8 +101,8 @@ export const handleOpenCode = ({
 
     // --- ACP stream from stdio ---
     const stream = ndJsonStream(
-        Writable.toWeb(proc.stdin!),
-        Readable.toWeb(proc.stdout!),
+        Writable.toWeb(proc.stdin),
+        Readable.toWeb(proc.stdout),
     );
 
     const app = client({ name: "timeversation" });
@@ -114,14 +114,21 @@ export const handleOpenCode = ({
         },
     );
 
-    app.connectWith(stream, async (ctx: ClientContext) => {
-        const init: any = await ctx.request(methods.agent.initialize, {
-            protocolVersion: "1.0",
-            clientCapabilities: {
-                fs: { writeTextFile: true, readTextFile: true },
-                terminal: true,
+    const connection = await app.connect(stream);
+
+    app.onConnect(async () => {
+        const init: any = await connection.agent.request(
+            methods.agent.initialize,
+            {
+                protocolVersion: "1.0",
+                // clientCapabilities: {
+                //     fs: { writeTextFile: true, readTextFile: true },
+                //     terminal: true,
+                // },
             },
-        });
+        );
+
+        console.log(init);
 
         writeSSEEvent(
             res,
@@ -132,7 +139,9 @@ export const handleOpenCode = ({
             }),
         );
 
-        const session: ActiveSession = await ctx.buildSession(cwd).start();
+        const session: ActiveSession = await connection.agent
+            .buildSession(cwd)
+            .start();
 
         writeSSEEvent(
             res,
@@ -162,6 +171,8 @@ export const handleOpenCode = ({
             }
 
             const resp: any = await promptPromise;
+
+            console.log(resp);
             writeSSEEvent(
                 res,
                 JSON.stringify({
@@ -170,6 +181,10 @@ export const handleOpenCode = ({
                     stop_reason: resp?.stopReason ?? "end_turn",
                 }),
             );
+
+            writeSSEEvent(res, "[DONE]");
+
+            end();
         } finally {
             try {
                 session.dispose();
@@ -177,17 +192,18 @@ export const handleOpenCode = ({
                 /* ok */
             }
         }
-    })
-        .then(() => {
-            writeSSEEvent(res, "[DONE]");
-            end();
-        })
-        .catch((err: any) => {
-            if (err?.code === "ECONNRESET" || err?.name === "AbortError") {
-                writeSSEEvent(res, "[DONE]");
-            } else {
-                writeSSEEvent(res, err?.message ?? "ACP failed", "error");
-            }
-            end();
-        });
+    });
+
+    // .then(() => {
+    //     writeSSEEvent(res, "[DONE]");
+    //     end();
+    // })
+    // .catch((err: any) => {
+    //     if (err?.code === "ECONNRESET" || err?.name === "AbortError") {
+    //         writeSSEEvent(res, "[DONE]");
+    //     } else {
+    //         writeSSEEvent(res, err?.message ?? "ACP failed", "error");
+    //     }
+    //     end();
+    // });
 };
