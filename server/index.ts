@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { BrowserWindow } from "electron";
 import { createChatRouter } from "./routes/chat";
+import { createConversationsRouter } from "./routes/conversations";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -67,6 +68,10 @@ async function createServer({
     // --- Chat ---
     const chatRouter = await createChatRouter({ win, workspacePath });
     app.use("/api/chat", chatRouter);
+
+    // --- Conversations ---
+    const conversationsRouter = await createConversationsRouter({ workspacePath });
+    app.use("/api/conversations", conversationsRouter);
 
     return app;
 }
