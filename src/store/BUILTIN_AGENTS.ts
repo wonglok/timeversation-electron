@@ -72,16 +72,16 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         homepage: "https://docs.anthropic.com/en/docs/claude-code",
         icon: ClaudeCodeColor,
     },
-    {
-        name: "OpenAI Codex CLI",
-        slug: "openai-codex-cli",
-        cliName: "codex",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "OpenAI's terminal-based coding agent",
-        homepage: "https://github.com/openai/codex",
-        icon: CodexColor,
-    },
+    // {
+    //     name: "OpenAI Codex CLI",
+    //     slug: "openai-codex-cli",
+    //     cliName: "codex",
+    //     detectionArgs: ["--version"],
+    //     versionRegex: /(\d+\.\d+\.\d+)/,
+    //     description: "OpenAI's terminal-based coding agent",
+    //     homepage: "https://github.com/openai/codex",
+    //     icon: CodexColor,
+    // },
     {
         name: "OpenAI Codex SDK",
         slug: "openai-codex-sdk",
@@ -103,7 +103,6 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         homepage: "https://github.com/opencode-ai/opencode",
         icon: OpenCodeIcon,
     },
-
     {
         name: "Kimi Code",
         slug: "kimi-code",
