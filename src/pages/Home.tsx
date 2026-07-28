@@ -65,6 +65,7 @@ export function Home() {
                     {BUILTIN_AGENTS.map((agent) => {
                         const IconComponent = agent.icon;
                         const isInstalled = installed[agent.slug];
+
                         return (
                             <div
                                 key={agent.slug}
@@ -80,7 +81,7 @@ export function Home() {
                                           }
                                         : undefined
                                 }
-                                className={`glass-card relative flex flex-col items-center gap-2.5 px-4 py-5 transition-all duration-300 ${
+                                className={`rounded-[10px] border-[#005475]  border-2 bg-[#005275] relative flex flex-col items-center gap-2.5 px-4 py-5 transition-all duration-300   ${
                                     isInstalled
                                         ? "cursor-pointer hover:-translate-y-0.5 hover:ring-2 hover:ring-[var(--tiffany-glow)]"
                                         : "opacity-50 cursor-default"
@@ -99,9 +100,12 @@ export function Home() {
                                 ) : (
                                     <div className="w-10 h-10 rounded-lg bg-[var(--border-subtle)]" />
                                 )}
-                                <span className="text-[0.8rem] font-semibold text-[var(--text-primary)] leading-tight text-center">
+
+                                <span className="text-[0.8rem] font-semibold text-[#ffffff] leading-tight text-center">
                                     {agent.name}
                                 </span>
+
+                                {/*  */}
                             </div>
                         );
                     })}
