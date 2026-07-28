@@ -126,12 +126,19 @@ export const handleOpenCode = async ({
     // session/update notifications so we can persist it to the thread.
     let assistantText = "";
 
+    // When true, session/update notifications are NOT forwarded to the
+    // client.  Set during session.load to avoid replaying the entire
+    // history as bubbles (the client already has thread messages loaded).
+    let suppressForwarding = false;
+
     // Forward session/update notifications as raw ACP NDJSON lines and
     // accumulate text chunks for thread persistence.
     app.onNotification(
         methods.client.session.update,
         (ctx: ClientHandlerContext<schema.SessionNotification>) => {
-            writeSSEEvent(res, JSON.stringify(ctx.params));
+            if (!suppressForwarding) {
+                writeSSEEvent(res, JSON.stringify(ctx.params));
+            }
 
             // Collect agent_message_chunk text for the thread
             const update = (ctx.params as any).update;
@@ -201,12 +208,17 @@ export const handleOpenCode = async ({
                         }),
                     );
 
+                    // Suppress forwarding during session load so the
+                    // client doesn't receive replayed history as
+                    // bubbles — it already has thread messages.
+                    suppressForwarding = true;
                     await ctx.request(methods.agent.session.load, {
                         cwd: cwd,
                         sessionId: conv.sessionId,
                         mcpServers: [],
                         _meta: { conversationId: convId },
                     });
+                    suppressForwarding = false;
 
                     activeSessionId = conv.sessionId;
                 } else if (conv) {

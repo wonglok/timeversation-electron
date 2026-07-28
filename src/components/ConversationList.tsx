@@ -112,15 +112,11 @@ export function ConversationList() {
     const filtered = conversations.filter((c) => c.agentSlug === slug);
 
     // Get agent name for a given slug
-    const agentName = useCallback(
-        (agentSlug: string) => {
-            return (
-                BUILTIN_AGENTS.find((a) => a.slug === agentSlug)?.name ??
-                agentSlug
-            );
-        },
-        [],
-    );
+    const agentName = useCallback((agentSlug: string) => {
+        return (
+            BUILTIN_AGENTS.find((a) => a.slug === agentSlug)?.name ?? agentSlug
+        );
+    }, []);
 
     async function handleNew() {
         const conv = await createConversation({

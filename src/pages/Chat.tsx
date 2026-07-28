@@ -7,14 +7,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { BUILTIN_AGENTS } from "../store/BUILTIN_AGENTS";
 import { useConversationsStore } from "../store/conversations";
 import { ConversationList } from "../components/ConversationList";
-import {
-    AcpBubble,
-    LoadingBubble,
-    EmptyChat,
-    ResultFooter,
-    groupBubbles,
-} from "../components/MessageBubble/MessageBubble";
 import type { Bubble } from "../components/MessageBubble/types";
+import { ChatBox } from "../components/ChatBox/ChatBox";
 
 const API_BASE = "http://localhost:8390";
 
@@ -269,10 +263,9 @@ export function Chat() {
                         });
                         break;
                     case "session_load":
-                        // The server is replaying a loaded session's full
-                        // history — clear existing bubbles so we don't
-                        // duplicate messages already shown from the thread.
-                        setBubbles([]);
+                        // Server loaded a session to restore context.
+                        // History is NOT forwarded to the client (server
+                        // suppresses replay), so no need to clear bubbles.
                         break;
                     case "hook_response":
                         if (parsed.stderr) {
@@ -473,7 +466,7 @@ export function Chat() {
                         className="btn-secondary !px-3 !py-1.5 text-sm"
                         onClick={() => navigate("/")}
                     >
-                        ← Back
+                        Back
                     </button>
 
                     <div className="flex items-center gap-2.5 ml-1">
@@ -489,64 +482,20 @@ export function Chat() {
                     </div>
                 </header>
 
-                {/* Messages */}
-                <div
-                    ref={scrollRef}
-                    className="flex-1 overflow-y-auto py-6 flex flex-col gap-4 max-w-[720px] mx-auto w-full px-4"
-                >
-                    {bubbles.length === 0 && (
-                        <EmptyChat
-                            title={`Start a conversation with ${agent.name}`}
-                            subtitle="Messages are sent directly to your local CLI agent"
-                        />
-                    )}
-
-                    {groupBubbles(bubbles).map((group) => (
-                        <div key={group.id} className="flex flex-col gap-1.5">
-                            {group.bubbles.map((b) => (
-                                <AcpBubble key={b.id} bubble={b} />
-                            ))}
-                            {group.resultFooter && (
-                                <ResultFooter
-                                    usage={group.resultFooter.usage}
-                                    cost={group.resultFooter.cost}
-                                    durationMs={group.resultFooter.durationMs}
-                                />
-                            )}
-                        </div>
-                    ))}
-
-                    {sending && <LoadingBubble />}
-                </div>
-
-                {/* Input */}
-                <div className="flex items-end gap-2 py-4 px-6 border-t border-[var(--border-subtle)] shrink-0 max-w-[720px] mx-auto w-full">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={`Message ${agent.name}...`}
-                        disabled={sending}
-                        rows={1}
-                        className="input-field flex-1 resize-none max-h-32"
-                    />
-                    {sending ? (
-                        <button
-                            className="btn-primary !px-4 !py-2 bg-red-500 hover:bg-red-600"
-                            onClick={handleStop}
-                        >
-                            Stop
-                        </button>
-                    ) : (
-                        <button
-                            className="btn-primary !px-4 !py-2"
-                            onClick={handleSend}
-                            disabled={!input.trim()}
-                        >
-                            Send
-                        </button>
-                    )}
-                </div>
+                <ChatBox
+                    key={conversationId}
+                    bubbles={bubbles}
+                    sending={sending}
+                    input={input}
+                    onInputChange={setInput}
+                    onSend={handleSend}
+                    onStop={handleStop}
+                    onKeyDown={handleKeyDown}
+                    agentName={agent.name}
+                    emptyTitle={`Start a conversation with ${agent.name}`}
+                    emptySubtitle="Messages are sent directly to your local CLI agent"
+                    scrollRef={scrollRef}
+                />
             </div>
         </main>
     );
