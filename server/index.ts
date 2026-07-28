@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { BrowserWindow } from "electron";
-import chatRouter from "./routes/chat";
+import { createChatRouter } from "./routes/chat";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,7 +26,13 @@ function isCommandInstalled(cmd: string): boolean {
 // Express app
 // ============================================================================
 
-function createServer({ win }: { win: BrowserWindow }) {
+async function createServer({
+    win,
+    workspacePath,
+}: {
+    workspacePath?: string;
+    win: BrowserWindow;
+}) {
     const app = express();
 
     app.use(cors());
@@ -59,6 +65,7 @@ function createServer({ win }: { win: BrowserWindow }) {
     });
 
     // --- Chat ---
+    const chatRouter = await createChatRouter({ win, workspacePath });
     app.use("/api/chat", chatRouter);
 
     return app;
@@ -73,7 +80,7 @@ export async function startServer({
     port?: number;
     workspacePath?: string;
 }) {
-    const app = createServer({ win });
+    const app = await createServer({ win, workspacePath });
     const PORT = port || Number(process.env.PORT) || 8390;
 
     // In production, serve the built frontend
