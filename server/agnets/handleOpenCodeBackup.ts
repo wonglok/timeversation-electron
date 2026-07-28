@@ -78,7 +78,7 @@ function resolveArgs(config: AgentConfig, message: string): string[] {
     return resolved;
 }
 
-export const handleOpenCode = ({
+export const handleOpenCodeBackup = ({
     req,
     res,
     message,
