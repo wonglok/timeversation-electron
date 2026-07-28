@@ -27,7 +27,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null;
 
-function createWindow() {
+async function createWindow() {
     win = new BrowserWindow({
         icon: path.join(process.env.VITE_PUBLIC, "app-icon.png"),
         webPreferences: {
@@ -57,7 +57,7 @@ function createWindow() {
         );
     });
 
-    startServer({ win });
+    await startServer({ win, workspacePath: app.getPath("appData") });
 
     if (VITE_DEV_SERVER_URL) void win.loadURL(VITE_DEV_SERVER_URL);
     else void win.loadFile(path.join(RENDERER_DIST, "index.html"));

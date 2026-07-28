@@ -30,6 +30,7 @@ export const createChatRouter = async ({
             res.status(400).json({ error: "slug and message are required" });
             return;
         }
+
         if (message && slug === "claude-code") {
             handleClaude({
                 workspacePath,
