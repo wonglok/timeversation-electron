@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import { client, ndJsonStream, methods } from "@agentclientprotocol/sdk";
-import type {
+import {
     ClientContext,
     ClientHandlerContext,
     ActiveSession,
@@ -140,6 +140,8 @@ export const handleOpenCode = async ({
             agentCapabilities: {
                 sessionCapabilities: {
                     list: {},
+                    loadSession: true,
+                    resume: {},
                 },
             },
         });
@@ -156,14 +158,47 @@ export const handleOpenCode = async ({
             }),
         );
 
-        const list = await ctx.request(methods.agent.session.list, {
-            cwd: cwd,
-        });
+        // Try to load an existing session matching the conversationId
+        const convId: string | undefined = req.body.conversationId;
+        let session: ActiveSession;
 
-        console.log(list);
+        if (convId) {
+            // List sessions and search for one with matching _meta.conversationId
+            const list = await ctx.request(methods.agent.session.list, {
+                cwd: cwd,
+            });
 
-        const session: ActiveSession = await ctx
-            .buildSession({ cwd: cwd, mcpServers: [] })
+            const existing = list.sessions.find(
+                (s) => s._meta?.conversationId === convId,
+            );
+
+            if (existing) {
+                writeSSEEvent(
+                    res,
+                    JSON.stringify({
+                        type: "system",
+                        subtype: "session_load",
+                        sessionId: existing.sessionId,
+                        conversationId: convId,
+                    }),
+                );
+
+                await ctx.request(methods.agent.session.load, {
+                    cwd: cwd,
+                    sessionId: existing.sessionId,
+                    mcpServers: [],
+                    _meta: { conversationId: convId },
+                });
+            }
+        }
+
+        // Build a new session if we didn't load an existing one
+        session = await ctx
+            .buildSession({
+                cwd: cwd,
+                mcpServers: [],
+                _meta: { conversationId: convId || "" },
+            })
             .start();
 
         // Emit session event matching claude's stream-json session schema

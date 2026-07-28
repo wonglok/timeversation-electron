@@ -11,7 +11,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <HashRouter>
             <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/chat/:slug" element={<Chat />} />
+                <Route path="/chat/:slug/:conversationId?" element={<Chat />} />
             </Routes>
         </HashRouter>
     </>,

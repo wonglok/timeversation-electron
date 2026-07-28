@@ -4,6 +4,7 @@
 
 import { Router } from "express";
 import path from "node:path";
+import { mkdirSync } from "node:fs";
 import { JSONFilePreset } from "lowdb/node";
 
 // ---------------------------------------------------------------------------
@@ -40,6 +41,7 @@ export async function createConversationsRouter({
     workspacePath?: string;
 }) {
     const dbDir = path.join(workspacePath ?? process.cwd(), "conversations");
+    mkdirSync(dbDir, { recursive: true });
     const dbFile = path.join(dbDir, "db.json");
 
     const db = await JSONFilePreset<DbSchema>(dbFile, {

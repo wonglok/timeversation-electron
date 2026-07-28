@@ -5,6 +5,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { BUILTIN_AGENTS } from "../store/BUILTIN_AGENTS";
+import { useConversationsStore } from "../store/conversations";
+import { ConversationList } from "../components/ConversationList";
 import {
     AcpBubble,
     LoadingBubble,
@@ -21,12 +23,15 @@ function nextId(): string {
     return `b-${++_bubbleId}`;
 }
 
-let sessionID = `${crypto.randomUUID()}`;
-
 export function Chat() {
-    const { slug } = useParams<{ slug: string }>();
+    const { slug, conversationId } = useParams<{
+        slug: string;
+        conversationId?: string;
+    }>();
     const navigate = useNavigate();
     const agent = BUILTIN_AGENTS.find((a) => a.slug === slug);
+
+    const { activeId, createConversation } = useConversationsStore();
 
     const [bubbles, setBubbles] = useState<Bubble[]>([]);
     const [input, setInput] = useState("");
@@ -78,7 +83,11 @@ export function Chat() {
             setBubbles((prev) => {
                 // Merge consecutive text or thinking bubbles in the same group.
                 // OpenCode sends tiny one-word chunks — merging avoids flicker.
-                if (MERGE_KINDS.includes(kind) && opts.text && groupRef.current) {
+                if (
+                    MERGE_KINDS.includes(kind) &&
+                    opts.text &&
+                    groupRef.current
+                ) {
                     const last = prev[prev.length - 1];
                     if (
                         last &&
@@ -109,7 +118,10 @@ export function Chat() {
     // ------------------------------------------------------------------
     // OpenCode ACP session/update parser
     // ------------------------------------------------------------------
-    function parseOpenCodeUpdate(notif: { sessionId: string; update: any }): void {
+    function parseOpenCodeUpdate(notif: {
+        sessionId: string;
+        update: any;
+    }): void {
         const { update } = notif;
 
         switch (update.sessionUpdate) {
@@ -136,7 +148,10 @@ export function Chat() {
 
             case "tool_call_update":
                 // Status change on an existing tool call — show as system pill
-                if (update.status === "completed" || update.status === "failed") {
+                if (
+                    update.status === "completed" ||
+                    update.status === "failed"
+                ) {
                     appendBubble("system", {
                         systemSubtype: "tool",
                         systemDetail: `Tool ${update.toolCallId}: ${update.status}`,
@@ -252,7 +267,9 @@ export function Chat() {
                 for (const block of blocks) {
                     switch (block.type) {
                         case "thinking":
-                            appendBubble("thinking", { text: block.thinking ?? "" });
+                            appendBubble("thinking", {
+                                text: block.thinking ?? "",
+                            });
                             break;
                         case "text":
                             appendBubble("text", { text: block.text ?? "" });
@@ -300,7 +317,7 @@ export function Chat() {
                 method: "POST",
                 mode: "cors",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slug, message, sessionID }),
+                body: JSON.stringify({ slug, message, conversationId }),
                 signal,
             });
 
@@ -357,6 +374,20 @@ export function Chat() {
         setInput("");
         setSending(true);
 
+        // Auto-create conversation if there isn't an active one
+        let convId = activeId;
+        if (!convId) {
+            const title = text.length > 40 ? text.slice(0, 40) + "..." : text;
+            const conv = await createConversation({
+                agentSlug: agent!.slug,
+                title,
+            });
+            if (conv) {
+                convId = conv.id;
+                navigate(`/chat/${slug}/${conv.id}`, { replace: true });
+            }
+        }
+
         // Start a new group for this conversation turn
         groupRef.current = nextId();
 
@@ -401,86 +432,92 @@ export function Chat() {
     }
 
     return (
-        <main className="flex flex-col h-screen max-w-[720px] mx-auto px-4">
-            {/* ---- Header ---- */}
-            <header className="flex items-center gap-3 py-4 border-b border-[var(--border-subtle)] shrink-0">
-                <button
-                    className="btn-secondary !px-3 !py-1.5 text-sm"
-                    onClick={() => navigate("/")}
+        <main className="flex h-screen">
+            {/* ---- Sidebar ---- */}
+            <ConversationList />
+
+            {/* ---- Chat Area ---- */}
+            <div className="flex-1 flex flex-col h-screen min-w-0">
+                {/* Header */}
+                <header className="flex items-center gap-3 py-4 px-6 border-b border-[var(--border-subtle)] shrink-0">
+                    <button
+                        className="btn-secondary !px-3 !py-1.5 text-sm"
+                        onClick={() => navigate("/")}
+                    >
+                        ← Back
+                    </button>
+
+                    <div className="flex items-center gap-2.5 ml-1">
+                        {IconComponent && <IconComponent size={28} />}
+                        <div>
+                            <h2 className="text-[0.95rem] font-bold text-[var(--text-primary)] m-0 leading-tight">
+                                {agent.name}
+                            </h2>
+                            <p className="text-[0.7rem] text-[var(--text-dim)] m-0">
+                                {agent.cliName}
+                            </p>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Messages */}
+                <div
+                    ref={scrollRef}
+                    className="flex-1 overflow-y-auto py-6 flex flex-col gap-4 max-w-[720px] mx-auto w-full px-4"
                 >
-                    ← Back
-                </button>
+                    {bubbles.length === 0 && (
+                        <EmptyChat
+                            title={`Start a conversation with ${agent.name}`}
+                            subtitle="Messages are sent directly to your local CLI agent"
+                        />
+                    )}
 
-                <div className="flex items-center gap-2.5 ml-1">
-                    {IconComponent && <IconComponent size={28} />}
-                    <div>
-                        <h2 className="text-[0.95rem] font-bold text-[var(--text-primary)] m-0 leading-tight">
-                            {agent.name}
-                        </h2>
-                        <p className="text-[0.7rem] text-[var(--text-dim)] m-0">
-                            {agent.cliName}
-                        </p>
-                    </div>
+                    {groupBubbles(bubbles).map((group) => (
+                        <div key={group.id} className="flex flex-col gap-1.5">
+                            {group.bubbles.map((b) => (
+                                <AcpBubble key={b.id} bubble={b} />
+                            ))}
+                            {group.resultFooter && (
+                                <ResultFooter
+                                    usage={group.resultFooter.usage}
+                                    cost={group.resultFooter.cost}
+                                    durationMs={group.resultFooter.durationMs}
+                                />
+                            )}
+                        </div>
+                    ))}
+
+                    {sending && <LoadingBubble />}
                 </div>
-            </header>
 
-            {/* ---- Messages ---- */}
-            <div
-                ref={scrollRef}
-                className="flex-1 overflow-y-auto py-6 flex flex-col gap-4"
-            >
-                {bubbles.length === 0 && (
-                    <EmptyChat
-                        title={`Start a conversation with ${agent.name}`}
-                        subtitle="Messages are sent directly to your local CLI agent"
+                {/* Input */}
+                <div className="flex items-end gap-2 py-4 px-6 border-t border-[var(--border-subtle)] shrink-0 max-w-[720px] mx-auto w-full">
+                    <textarea
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={`Message ${agent.name}...`}
+                        disabled={sending}
+                        rows={1}
+                        className="input-field flex-1 resize-none max-h-32"
                     />
-                )}
-
-                {groupBubbles(bubbles).map((group) => (
-                    <div key={group.id} className="flex flex-col gap-1.5">
-                        {group.bubbles.map((b) => (
-                            <AcpBubble key={b.id} bubble={b} />
-                        ))}
-                        {group.resultFooter && (
-                            <ResultFooter
-                                usage={group.resultFooter.usage}
-                                cost={group.resultFooter.cost}
-                                durationMs={group.resultFooter.durationMs}
-                            />
-                        )}
-                    </div>
-                ))}
-
-                {sending && <LoadingBubble />}
-            </div>
-
-            {/* ---- Input ---- */}
-            <div className="flex items-end gap-2 py-4 border-t border-[var(--border-subtle)] shrink-0">
-                <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={`Message ${agent.name}…`}
-                    disabled={sending}
-                    rows={1}
-                    className="input-field flex-1 resize-none max-h-32"
-                />
-                {sending ? (
-                    <button
-                        className="btn-primary !px-4 !py-2 bg-red-500 hover:bg-red-600"
-                        onClick={handleStop}
-                    >
-                        Stop
-                    </button>
-                ) : (
-                    <button
-                        className="btn-primary !px-4 !py-2"
-                        onClick={handleSend}
-                        disabled={!input.trim()}
-                    >
-                        Send
-                    </button>
-                )}
+                    {sending ? (
+                        <button
+                            className="btn-primary !px-4 !py-2 bg-red-500 hover:bg-red-600"
+                            onClick={handleStop}
+                        >
+                            Stop
+                        </button>
+                    ) : (
+                        <button
+                            className="btn-primary !px-4 !py-2"
+                            onClick={handleSend}
+                            disabled={!input.trim()}
+                        >
+                            Send
+                        </button>
+                    )}
+                </div>
             </div>
         </main>
     );
