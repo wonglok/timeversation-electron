@@ -45,7 +45,8 @@ export async function createOpenAiNodeLlamaRouter({
 } = {}) {
     const router = Router();
     const resolvedModelsDir =
-        modelsDir ?? path.join(app.getPath("appData"), "ai-models");
+        modelsDir ??
+        path.join(app.getPath("appData"), "timeversation", "ai-models");
 
     // ------------------------------------------------------------------
     // Model state (lazy singleton)

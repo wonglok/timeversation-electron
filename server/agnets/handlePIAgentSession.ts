@@ -37,9 +37,11 @@ function writeSSEEvent(
         // Empty data — emit a single empty data line
         parts.push(encodeLine("data", ""));
     } else {
-        // Split on \n so each physical line gets its own `data:` prefix
+        // Split on \n so each physical line gets its own `data:` prefix.
+        // encodeLine already appends \r\n as the line terminator, so we
+        // must NOT append an extra \n here.
         for (const line of data.split("\n")) {
-            parts.push(encodeLine("data", `${line}\n`));
+            parts.push(encodeLine("data", line));
         }
     }
 
@@ -142,29 +144,33 @@ export const handlePIAgentSession = async ({
     let assistantText = "";
 
     // --- CLI args ---
-    // --continue resumes the conversation in this project directory.
-    // Since we use a per-conversation cwd, Claude Code maintains isolated
-    // session state for each conversation automatically.
+    // --print: non-interactive, process prompt and exit
+    // --continue (-c): resume previous session
+    // --session-dir: isolate session storage per conversation so --continue
+    //                picks up the right conversation context.
     const args = [
-        //
-        JSON.stringify(message),
         "--print",
-        "--continue",
+        "-c",
+        "--session-dir",
+        sessionPath,
+        JSON.stringify(message),
     ];
 
-    // --- Spawn claude process ---
+    // --- Spawn pi process ---
     const proc = spawn("pi", args, {
         env: process.env,
         cwd: sessionPath,
-        stdio: ["pipe", "pipe", "pipe"],
+        stdio: ["pipe", "pipe", "ignore"],
     });
 
     // --- UTF-8 decoders ---
     const stdoutDecoder = new TextDecoder();
     const stderrDecoder = new TextDecoder();
 
-    let stdoutBuf = "";
-    let stderrBuf = "";
+    // Use objects so mutations inside pipeChunk/flushDecoder propagate
+    // back to the caller (strings are copied by value, objects are shared).
+    const stdoutBuf = { buf: "" };
+    const stderrBuf = { buf: "" };
 
     function pipeChunk(
         raw: Buffer,
@@ -197,7 +203,7 @@ export const handlePIAgentSession = async ({
 
     // --- stdout → SSE ---
     proc.stdout.on("data", (raw: Buffer) => {
-        pipeChunk(raw, stdoutDecoder, { buf: stdoutBuf }, (line) => {
+        pipeChunk(raw, stdoutDecoder, stdoutBuf, (line) => {
             // Collect text from assistant message blocks for thread persistence
             try {
                 const parsed = JSON.parse(line);
@@ -220,35 +226,31 @@ export const handlePIAgentSession = async ({
 
     // // --- stderr → SSE named events ---
     // proc.stderr.on("data", (raw: Buffer) => {
-    //     pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
+    //     pipeChunk(raw, stderrDecoder, stderrBuf, (line) =>
     //         writeSSEEvent(res, line, "stderr"),
     //     );
     // });
 
-    // --- Process spawn error ---
-    proc.on("error", (err) => {
-        writeSSEEvent(res, err.message, "error");
-        res.end();
-    });
+    // // --- Process spawn error ---
+    // proc.on("error", (err) => {
+    //     writeSSEEvent(res, err.message, "error");
+    //     res.end();
+    // });
 
-    // --- Client disconnect → kill process ---
-    req.on("close", () => {
-        if (proc.exitCode === null && !proc.killed) {
-            proc.kill();
-        }
-    });
+    // // --- Client disconnect → kill process ---
+    // req.on("close", () => {
+    //     if (proc.exitCode === null && !proc.killed) {
+    //         proc.kill();
+    //     }
+    // });
 
     // --- Process complete ---
     proc.on("close", async (code, signal) => {
         // Flush any trailing bytes
-        flushDecoder(
-            stdoutDecoder,
-            { buf: stdoutBuf },
-            writeSSEEvent.bind(null, res),
-        );
+        flushDecoder(stdoutDecoder, stdoutBuf, writeSSEEvent.bind(null, res));
         flushDecoder(
             stderrDecoder,
-            { buf: stderrBuf },
+            stderrBuf,
             writeSSEEvent.bind(null, res),
             "stderr",
         );
