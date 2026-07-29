@@ -80,7 +80,7 @@ export const handleOpenCode = async ({
     // --- Resolve session directory ---
     const appDataPath = app.getPath("appData");
     const dirSessionId = conversationId || crypto.randomUUID();
-    const sessionPath = path.join(appDataPath, "session", dirSessionId);
+    const sessionPath = path.join(appDataPath, "timeversation", "sessions", dirSessionId);
     try {
         mkdirSync(sessionPath, { recursive: true });
     } catch (_) {
