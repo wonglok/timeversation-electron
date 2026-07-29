@@ -36,7 +36,6 @@ export function Home() {
 
     return (
         <main className="flex flex-col items-center px-8 pt-16 pb-24 min-h-screen">
-            <div id="addme"></div>
             {/* ---- Hero ---- */}
             <section className="flex flex-col items-center text-center max-w-[680px] gap-5 pt-8">
                 {/* Badge */}
@@ -52,14 +51,14 @@ export function Home() {
 
                 {/* Subtitle */}
                 <p className="text-[1.15rem] text-[var(--text-secondary)] leading-[1.7] max-w-[480px] m-0 reveal-3">
-                    New kind of conversation that saves your time.
+                    Conversations that creates working hours.
                 </p>
             </section>
 
             {/* ---- Agent Icons ---- */}
             <section className="flex flex-col items-center gap-6 mt-14 max-w-[720px] w-full reveal-4">
                 <h2 className="text-[0.85rem] font-semibold uppercase tracking-[0.08em] text-[var(--text-dim)] m-0">
-                    Supported Agents
+                    Use your own agents (no need to buy a new plan, duh!) haha
                 </h2>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full">

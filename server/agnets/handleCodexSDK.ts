@@ -103,7 +103,6 @@ export const handleCodexSDK = async ({
         config: {
             sandboxed: false,
             skipGitRepoCheck: true,
-            approvalPolicy: "never",
         },
     });
 
@@ -121,7 +120,6 @@ export const handleCodexSDK = async ({
                 thread = codex.resumeThread(conv.sessionId, {
                     workingDirectory: sessionPath,
                     skipGitRepoCheck: true,
-                    approvalPolicy: "never",
                 });
                 threadId = conv.sessionId;
 
@@ -142,7 +140,6 @@ export const handleCodexSDK = async ({
         thread = codex.startThread({
             workingDirectory: sessionPath,
             skipGitRepoCheck: true,
-            approvalPolicy: "never",
         });
     }
 

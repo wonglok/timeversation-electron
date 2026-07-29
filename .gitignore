@@ -9,3 +9,6 @@ node_modules
 /models
 
 byoa
+
+tsconfig.node.tsbuildinfo
+tsconfig.tsbuildinfo
