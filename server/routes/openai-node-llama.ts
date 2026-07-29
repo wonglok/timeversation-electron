@@ -5,21 +5,22 @@
 import { Router } from "express";
 import path from "node:path";
 import fs from "node:fs";
-import { spawn, type ChildProcess } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { app, shell } from "electron";
 import {
     getLlama,
+    createModelDownloader,
+    readGgufFileInfo,
+    GgufInsights,
     type LlamaModel,
     type LlamaContext,
     type LlamaContextSequence,
+    type ModelDownloader,
 } from "node-llama-cpp";
 import {
     OpenAIMock,
     type OpenAIMockConfig,
     type ChatCompletionCreateParams,
 } from "../node-llama-cpp/OpenAISDKMock.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ============================================================================
 // Types
@@ -43,7 +44,8 @@ export async function createOpenAiNodeLlamaRouter({
     modelsDir?: string;
 } = {}) {
     const router = Router();
-    const resolvedModelsDir = modelsDir ?? path.join(__dirname, "..", "..", "models");
+    const resolvedModelsDir =
+        modelsDir ?? path.join(app.getPath("appData"), "ai-models");
 
     // ------------------------------------------------------------------
     // Model state (lazy singleton)
@@ -83,7 +85,11 @@ export async function createOpenAiNodeLlamaRouter({
 
         // Dispose previous state if switching models
         if (state) {
-            try { state.context.dispose(); } catch { /* ignore */ }
+            try {
+                state.context.dispose();
+            } catch {
+                /* ignore */
+            }
         }
 
         const llama = await getLlama();
@@ -113,10 +119,14 @@ export async function createOpenAiNodeLlamaRouter({
     // ------------------------------------------------------------------
 
     router.post("/chat", async (req, res) => {
-        const { messages, stream = true, temperature, max_tokens } =
-            (req.body ?? {}) as ChatCompletionCreateParams & {
-                messages: NonNullable<ChatCompletionCreateParams["messages"]>;
-            };
+        const {
+            messages,
+            stream = true,
+            temperature,
+            max_tokens,
+        } = (req.body ?? {}) as ChatCompletionCreateParams & {
+            messages: NonNullable<ChatCompletionCreateParams["messages"]>;
+        };
 
         if (!messages || !Array.isArray(messages)) {
             res.status(400).json({ error: "messages array is required" });
@@ -183,8 +193,7 @@ export async function createOpenAiNodeLlamaRouter({
             client.chat.completions.resetHistory();
             res.json({ ok: true });
         } catch (err) {
-            const message =
-                err instanceof Error ? err.message : String(err);
+            const message = err instanceof Error ? err.message : String(err);
             res.status(500).json({ error: { message } });
         }
     });
@@ -222,8 +231,7 @@ export async function createOpenAiNodeLlamaRouter({
                 loaded: currentModelPath ?? null,
             });
         } catch (err) {
-            const message =
-                err instanceof Error ? err.message : String(err);
+            const message = err instanceof Error ? err.message : String(err);
             res.status(500).json({ error: { message } });
         }
     });
@@ -243,10 +251,97 @@ export async function createOpenAiNodeLlamaRouter({
     });
 
     // ------------------------------------------------------------------
+    // POST /models/check — check model compatibility with current system
+    // ------------------------------------------------------------------
+
+    router.post("/models/check", async (req, res) => {
+        const { modelPath: targetPath } = req.body as {
+            modelPath?: string;
+        };
+
+        // Resolve path: if user provides a name/filename, resolve it within
+        // the models dir (strip any traversal). Otherwise find the first .gguf.
+        let resolvedPath: string | null;
+
+        if (targetPath) {
+            // Only allow a plain filename — strip any directory components
+            const safeName = path.basename(targetPath);
+            if (!safeName.endsWith(".gguf")) {
+                res.status(400).json({
+                    error: "modelPath must be a .gguf filename or omitted",
+                });
+                return;
+            }
+            resolvedPath = path.join(resolvedModelsDir, safeName);
+        } else {
+            resolvedPath = findGgufFile(resolvedModelsDir);
+        }
+
+        if (!resolvedPath) {
+            res.status(400).json({
+                error: "No model path provided and no .gguf found in models directory",
+            });
+            return;
+        }
+
+        // Guard: verify the resolved real path stays inside the models directory
+        if (!fs.existsSync(resolvedPath)) {
+            res.status(404).json({
+                error: `Model file not found: ${path.basename(resolvedPath)}`,
+            });
+            return;
+        }
+
+        const modelsRoot = path.resolve(resolvedModelsDir);
+        const realPath = fs.realpathSync(resolvedPath);
+        if (!realPath.startsWith(modelsRoot + path.sep)) {
+            res.status(403).json({ error: "Access denied" });
+            return;
+        }
+
+        try {
+            const llama = await getLlama();
+            const modelMetadata = await readGgufFileInfo(resolvedPath);
+
+            const insights = await GgufInsights.from(modelMetadata, llama);
+            const resolvedConfig =
+                await insights.configurationResolver.resolveAndScoreConfig();
+            const flashAttentionConfig =
+                await insights.configurationResolver.resolveAndScoreConfig({
+                    flashAttention: true,
+                });
+
+            res.json({
+                modelPath: resolvedPath,
+                metadata: {
+                    version: modelMetadata.version,
+                    tensorCount: Number(modelMetadata.tensorCount),
+                    splicedParts: modelMetadata.splicedParts,
+                    totalTensorCount: Number(modelMetadata.totalTensorCount),
+                    metadataSize: modelMetadata.metadataSize,
+                },
+                compatibility: {
+                    score: resolvedConfig.compatibilityScore,
+                    percent: `${Math.round(resolvedConfig.compatibilityScore * 100)}%`,
+                },
+                flashAttention: {
+                    score: flashAttentionConfig.compatibilityScore,
+                    percent: `${Math.round(flashAttentionConfig.compatibilityScore * 100)}%`,
+                },
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            res.status(500).json({ error: { message } });
+        }
+    });
+
+    // ------------------------------------------------------------------
     // POST /models/pull — download model from Hugging Face (SSE progress)
     // ------------------------------------------------------------------
 
-    router.post("/models/pull", (req, res) => {
+    // Track active downloads so we can cancel them
+    let activeDownloader: ModelDownloader | null = null;
+    router.post("/models/pull", async (req, res) => {
         const { repo } = req.body as { repo?: string };
 
         if (!repo) {
@@ -265,107 +360,181 @@ export async function createOpenAiNodeLlamaRouter({
         res.setHeader("X-Accel-Buffering", "no");
         res.flushHeaders();
 
-        let child: ChildProcess;
+        const abortController = new AbortController();
+
+        // // Clean up on client disconnect
+        // req.on("close", () => {
+        //     abortController.abort();
+        //     if (activeDownloader) {
+        //         activeDownloader.cancel().catch(() => {});
+        //         activeDownloader = null;
+        //     }
+        // });
 
         try {
-            child = spawn(
-                "npx",
-                [
-                    "node-llama-cpp",
-                    "pull",
-                    "--dir",
-                    resolvedModelsDir,
-                    repo,
-                ],
-                {
-                    stdio: ["ignore", "pipe", "pipe"],
-                    env: { ...process.env, FORCE_COLOR: "0" },
+            const downloader = await createModelDownloader({
+                modelUri: repo,
+                dirPath: resolvedModelsDir,
+                showCliProgress: false,
+                onProgress: (status) => {
+                    res.write(
+                        `data: ${JSON.stringify({
+                            type: "progress",
+                            downloadedSize: status.downloadedSize,
+                            totalSize: status.totalSize,
+                        })}\n\n`,
+                    );
                 },
-            );
-        } catch (err) {
-            const message =
-                err instanceof Error ? err.message : String(err);
+            });
+
+            activeDownloader = downloader;
+
+            const modelPath = await downloader.download({
+                signal: abortController.signal,
+            });
+
+            activeDownloader = null;
+
+            // Unload current model so next chat request picks up the new one
+            if (state) {
+                try {
+                    state.context.dispose();
+                } catch {
+                    /* ignore */
+                }
+                state = null;
+                currentModelPath = null;
+            }
+
             res.write(
-                `data: ${JSON.stringify({ type: "error", message })}\n\n`,
+                `data: ${JSON.stringify({
+                    type: "done",
+                    success: true,
+                    path: modelPath,
+                    name: path.basename(modelPath),
+                })}\n\n`,
             );
             res.end();
+        } catch (err) {
+            activeDownloader = null;
+
+            if ((err as Error).name === "AbortError") {
+                res.write(
+                    `data: ${JSON.stringify({
+                        type: "cancelled",
+                        message: "Download cancelled",
+                    })}\n\n`,
+                );
+            } else {
+                const message =
+                    err instanceof Error ? err.message : String(err);
+                res.write(
+                    `data: ${JSON.stringify({
+                        type: "error",
+                        message,
+                    })}\n\n`,
+                );
+            }
+            res.end();
+        }
+    });
+
+    // ------------------------------------------------------------------
+    // POST /models/cancel — cancel an active download
+    // ------------------------------------------------------------------
+
+    router.post("/models/cancel", async (_req, res) => {
+        if (activeDownloader) {
+            try {
+                await activeDownloader.cancel();
+                activeDownloader = null;
+                res.json({ ok: true });
+            } catch (err) {
+                const message =
+                    err instanceof Error ? err.message : String(err);
+                res.status(500).json({ error: { message } });
+            }
+        } else {
+            res.json({ ok: true, message: "No active download" });
+        }
+    });
+
+    // ------------------------------------------------------------------
+    // POST /models/check-remote — compatibility check for a remote model URI
+    // ------------------------------------------------------------------
+
+    router.post("/models/check-remote", async (req, res) => {
+        const { repo } = req.body as { repo?: string };
+
+        if (!repo) {
+            res.status(400).json({
+                error: "repo is required (e.g. hf:user/repo:file.gguf)",
+            });
             return;
         }
 
-        // Stream stdout line-by-line as progress events
-        let buffer = "";
-        child.stdout?.on("data", (chunk: Buffer) => {
-            buffer += chunk.toString();
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
+        // Only allow hf: URIs — prevents local file access via file:// or /abs/path
+        if (!/^hf:[a-zA-Z0-9_.\-/]+[a-zA-Z0-9_.\-/:]+$/.test(repo)) {
+            res.status(400).json({
+                error: "repo must be an hf: URI (e.g. hf:user/repo:file.gguf)",
+            });
+            return;
+        }
 
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed) continue;
-                res.write(
-                    `data: ${JSON.stringify({ type: "progress", text: trimmed })}\n\n`,
-                );
+        try {
+            const llama = await getLlama();
+            const modelMetadata = await readGgufFileInfo(repo);
+
+            const insights = await GgufInsights.from(modelMetadata, llama);
+            const resolvedConfig =
+                await insights.configurationResolver.resolveAndScoreConfig();
+            const flashAttentionConfig =
+                await insights.configurationResolver.resolveAndScoreConfig({
+                    flashAttention: true,
+                });
+
+            res.json({
+                repo,
+                metadata: {
+                    version: modelMetadata.version,
+                    tensorCount: Number(modelMetadata.tensorCount),
+                    splicedParts: modelMetadata.splicedParts,
+                    totalTensorCount: Number(modelMetadata.totalTensorCount),
+                    metadataSize: modelMetadata.metadataSize,
+                },
+                compatibility: {
+                    score: resolvedConfig.compatibilityScore,
+                    percent: `${Math.round(resolvedConfig.compatibilityScore * 100)}%`,
+                },
+                flashAttention: {
+                    score: flashAttentionConfig.compatibilityScore,
+                    percent: `${Math.round(flashAttentionConfig.compatibilityScore * 100)}%`,
+                },
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            res.status(500).json({ error: { message } });
+        }
+    });
+
+    // ------------------------------------------------------------------
+    // POST /models/open-dir — open the models directory in file manager
+    // ------------------------------------------------------------------
+
+    router.post("/models/open-dir", async (_req, res) => {
+        try {
+            const dir = resolvedModelsDir;
+            fs.mkdirSync(dir, { recursive: true });
+            const openErr = await shell.openPath(dir);
+            if (openErr) {
+                res.status(500).json({ error: openErr });
+                return;
             }
-        });
-
-        // Stream stderr as progress too (some tools write progress to stderr)
-        let errBuffer = "";
-        child.stderr?.on("data", (chunk: Buffer) => {
-            errBuffer += chunk.toString();
-            const lines = errBuffer.split("\n");
-            errBuffer = lines.pop() ?? "";
-
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed) continue;
-                res.write(
-                    `data: ${JSON.stringify({ type: "progress", text: trimmed })}\n\n`,
-                );
-            }
-        });
-
-        child.on("close", (code) => {
-            // Flush remaining buffers
-            for (const buf of [buffer, errBuffer]) {
-                const trimmed = buf.trim();
-                if (trimmed) {
-                    res.write(
-                        `data: ${JSON.stringify({ type: "progress", text: trimmed })}\n\n`,
-                    );
-                }
-            }
-
-            if (code === 0) {
-                // Unload current model if it was replaced
-                if (state) {
-                    try { state.context.dispose(); } catch { /* ignore */ }
-                    state = null;
-                    currentModelPath = null;
-                }
-                res.write(
-                    `data: ${JSON.stringify({ type: "done", success: true })}\n\n`,
-                );
-            } else {
-                res.write(
-                    `data: ${JSON.stringify({ type: "error", message: `Pull exited with code ${code}` })}\n\n`,
-                );
-            }
-            res.end();
-        });
-
-        child.on("error", (err) => {
-            res.write(
-                `data: ${JSON.stringify({ type: "error", message: err.message })}\n\n`,
-            );
-            res.end();
-        });
-
-        // Clean up on client disconnect
-        req.on("close", () => {
-            if (child && !child.killed) {
-                child.kill();
-            }
-        });
+            res.json({ ok: true, path: dir });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            res.status(500).json({ error: { message } });
+        }
     });
 
     return router;

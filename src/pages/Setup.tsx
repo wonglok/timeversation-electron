@@ -2,33 +2,91 @@
 // Setup page — download & manage local LLM models from Hugging Face
 // ============================================================================
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const API_BASE = "http://localhost:8390";
-const HF_REPO = "google/gemma-4-E2B-it-qat-q4_0-gguf";
-const HF_API = `https://huggingface.co/api/models/${HF_REPO}`;
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface HfSibling {
-    rfilename: string;
-    size?: number;
-}
-
-interface DownloadedFile {
+interface ModelFile {
     name: string;
     size: number;
     path: string;
 }
 
-interface ModelsResponse {
+interface ModelsList {
     modelsDir: string;
-    files: DownloadedFile[];
+    files: ModelFile[];
     loaded: string | null;
 }
+
+interface SseProgress {
+    type: "progress";
+    downloadedSize: number;
+    totalSize: number;
+}
+
+interface SseDone {
+    type: "done";
+    success: boolean;
+    path: string;
+    name: string;
+}
+
+interface SseCancelled {
+    type: "cancelled";
+    message: string;
+}
+
+interface SseError {
+    type: "error";
+    message: string;
+}
+
+type SseEvent = SseProgress | SseDone | SseCancelled | SseError;
+
+interface ModelCompatInfo {
+    modelPath: string;
+    metadata: {
+        version: number;
+        tensorCount: number;
+        splicedParts: number;
+        totalTensorCount: number;
+        metadataSize: number;
+    };
+    compatibility: { score: number; percent: string };
+    flashAttention: { score: number; percent: string };
+}
+
+// ============================================================================
+// Preset models for quick download
+// ============================================================================
+
+const PRESET_MODELS: Array<{ label: string; repo: string }> = [
+    {
+        label: "Gemma 4 E2B (Q6_K)",
+        repo: "hf:giladgd/gemma-4-E2B-it-GGUF:Q6_K",
+    },
+    {
+        label: "Gemma 4 E4B (Q4_K_M)",
+        repo: "hf:giladgd/gemma-4-E4B-it-GGUF:Q4_K_M",
+    },
+    {
+        label: "Gemma 4 12B (Q4_K_M)",
+        repo: "hf:giladgd/gemma-4-12B-it-GGUF:Q4_K_M",
+    },
+    {
+        label: "Gemma 4 26B-A4B (Q8_0)",
+        repo: "hf:giladgd/gemma-4-26B-A4B-it-GGUF:Q8_0",
+    },
+];
 
 // ============================================================================
 // Helpers
@@ -38,50 +96,18 @@ function formatBytes(bytes: number): string {
     if (bytes === 0) return "0 B";
     const units = ["B", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    const val = bytes / Math.pow(1024, i);
-    return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+    const size = bytes / Math.pow(1024, i);
+    return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function formatPercent(downloaded: number, total: number): string {
+    if (total === 0) return "0%";
+    return `${Math.round((downloaded / total) * 100)}%`;
 }
 
 // ============================================================================
 // SVG Icons
 // ============================================================================
-
-function DownloadIcon() {
-    return (
-        <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7,10 12,15 17,10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-    );
-}
-
-function CheckCircleIcon() {
-    return (
-        <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22,4 12,14.01 9,11.01" />
-        </svg>
-    );
-}
 
 function ArrowLeftIcon() {
     return (
@@ -91,17 +117,139 @@ function ArrowLeftIcon() {
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth={2}
+            strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
         >
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12,19 5,12 12,5" />
+            <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
     );
 }
 
-function SpinnerIcon() {
+function DownloadIcon({ size = 16 }: { size?: number }) {
+    return (
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <path d="M7 10l5 5 5-5" />
+            <path d="M12 15V3" />
+        </svg>
+    );
+}
+
+function FolderIcon() {
+    return (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+        </svg>
+    );
+}
+
+function FileIcon() {
+    return (
+        <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <path d="M14 2v6h6" />
+        </svg>
+    );
+}
+
+function XIcon() {
+    return (
+        <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+    );
+}
+
+function CheckIcon() {
+    return (
+        <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M20 6 9 17l-5-5" />
+        </svg>
+    );
+}
+
+function AlertIcon() {
+    return (
+        <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M12 9v4M12 17h.01" />
+            <path d="M10.3 3.8 1.6 18a2 2 0 0 0 1.7 3h17.4a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
+        </svg>
+    );
+}
+
+function ChipIcon() {
+    return (
+        <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M9 2H5a3 3 0 0 0-3 3v4M15 2h4a3 3 0 0 1 3 3v4M9 22H5a3 3 0 0 1-3-3v-4M15 22h4a3 3 0 0 0 3-3v-4M2 12h20M12 2v20" />
+        </svg>
+    );
+}
+
+function LoaderIcon() {
     return (
         <svg
             width="16"
@@ -119,19 +267,10 @@ function SpinnerIcon() {
     );
 }
 
-function FolderIcon() {
+function CircleDotIcon() {
     return (
-        <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+            <circle cx="4" cy="4" r="4" />
         </svg>
     );
 }
@@ -141,348 +280,682 @@ function FolderIcon() {
 // ============================================================================
 
 export function Setup() {
-    const navigate = useNavigate();
-
     // --- State ---
-    const [hfFiles, setHfFiles] = useState<HfSibling[]>([]);
-    const [hfLoading, setHfLoading] = useState(true);
-    const [hfError, setHfError] = useState<string | null>(null);
-
-    const [downloaded, setDownloaded] = useState<DownloadedFile[]>([]);
-    const [loadedModel, setLoadedModel] = useState<string | null>(null);
-
-    const [downloading, setDownloading] = useState<string | null>(null);
-    const [downloadLog, setDownloadLog] = useState<string[]>([]);
-    const [downloadError, setDownloadError] = useState<string | null>(null);
-
-    const logEndRef = useRef<HTMLDivElement>(null);
+    const [models, setModels] = useState<ModelsList | null>(null);
+    const [repo, setRepo] = useState("hf:giladgd/gemma-4-E2B-it-GGUF:Q6_K");
+    const [downloading, setDownloading] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState<{
+        downloaded: number;
+        total: number;
+        name?: string;
+    } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [checkingModel, setCheckingModel] = useState<string | null>(null);
+    const [modelCompat, setModelCompat] = useState<
+        Record<string, ModelCompatInfo>
+    >({});
     const abortRef = useRef<AbortController | null>(null);
+    const [showPresets, setShowPresets] = useState(false);
+    const [presetCompat, setPresetCompat] = useState<
+        Record<string, { score: number; percent: string } | null>
+    >({});
+    const [checkingPresets, setCheckingPresets] = useState(false);
 
-    // --- Fetch Hugging Face file list ---
-    const fetchHfFiles = useCallback(async () => {
-        setHfLoading(true);
-        setHfError(null);
-        try {
-            const res = await fetch(HF_API, { mode: "cors" });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            const siblings: HfSibling[] = data.siblings ?? [];
-            // Only show .gguf files
-            setHfFiles(
-                siblings.filter((s) => s.rfilename.endsWith(".gguf")),
-            );
-        } catch (err) {
-            setHfError(
-                err instanceof Error ? err.message : "Failed to fetch files",
-            );
-        } finally {
-            setHfLoading(false);
-        }
+    // --- Check remote compatibility for preset models ---
+    const checkPresetCompat = useCallback(async () => {
+        setCheckingPresets(true);
+        const results: Record<
+            string,
+            { score: number; percent: string } | null
+        > = {};
+
+        await Promise.all(
+            PRESET_MODELS.map(async (preset) => {
+                try {
+                    const res = await fetch(
+                        `${API_BASE}/api/llm/models/check-remote`,
+                        {
+                            method: "POST",
+                            mode: "cors",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ repo: preset.repo }),
+                        },
+                    );
+                    if (!res.ok) {
+                        results[preset.repo] = null;
+                        return;
+                    }
+                    const data = await res.json();
+                    results[preset.repo] = {
+                        score: data.compatibility.score,
+                        percent: data.compatibility.percent,
+                    };
+                } catch {
+                    results[preset.repo] = null;
+                }
+            }),
+        );
+
+        setPresetCompat(results);
+        setCheckingPresets(false);
     }, []);
 
-    // --- Fetch downloaded models from backend ---
-    const fetchDownloaded = useCallback(async () => {
+    // Auto-check preset compatibility on mount
+    useEffect(() => {
+        checkPresetCompat();
+    }, [checkPresetCompat]);
+
+    // --- Fetch models list ---
+    const fetchModels = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE}/api/llm/models`, {
                 mode: "cors",
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data: ModelsResponse = await res.json();
-            setDownloaded(data.files);
-            setLoadedModel(data.loaded);
+            const data: ModelsList = await res.json();
+            setModels(data);
         } catch {
-            // Server not available — no models shown
+            // Server may not be ready
         }
     }, []);
 
-    // --- Initial load ---
     useEffect(() => {
-        fetchHfFiles();
-        fetchDownloaded();
-    }, [fetchHfFiles, fetchDownloaded]);
+        fetchModels();
+    }, [fetchModels]);
 
-    // --- Auto-scroll download log ---
-    useEffect(() => {
-        logEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [downloadLog]);
+    // --- Download model ---
+    const startDownload = useCallback(async () => {
+        if (!repo.trim()) return;
 
-    // --- Start download ---
-    async function handleDownload(repo: string, filename: string) {
-        setDownloading(filename);
-        setDownloadLog([]);
-        setDownloadError(null);
+        setDownloading(true);
+        setError(null);
+        setDownloadProgress(null);
 
         const controller = new AbortController();
         abortRef.current = controller;
+
+        let modelName = repo.trim();
 
         try {
             const res = await fetch(`${API_BASE}/api/llm/models/pull`, {
                 method: "POST",
                 mode: "cors",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ repo }),
+                body: JSON.stringify({ repo: repo.trim() }),
                 signal: controller.signal,
             });
 
             if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
+                const err = await res.json().catch(() => ({}));
+                throw new Error(
+                    (err as { error?: string }).error ||
+                        `Server returned ${res.status}`,
+                );
             }
 
             const reader = res.body?.getReader();
             if (!reader) throw new Error("No response body");
 
             const decoder = new TextDecoder();
-            let buf = "";
+            let buffer = "";
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                buf += decoder.decode(value, { stream: true });
-                const lines = buf.split("\n");
-                buf = lines.pop() ?? "";
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                // Keep the last partial line in the buffer
+                buffer = lines.pop() ?? "";
 
                 for (const line of lines) {
                     const trimmed = line.trim();
-                    if (!trimmed || !trimmed.startsWith("data: ")) continue;
+                    if (!trimmed.startsWith("data: ")) continue;
 
                     const jsonStr = trimmed.slice(6);
                     try {
-                        const event = JSON.parse(jsonStr);
+                        const event: SseEvent = JSON.parse(jsonStr);
 
-                        if (event.type === "progress") {
-                            setDownloadLog((prev) => [...prev, event.text]);
-                        } else if (event.type === "done") {
-                            setDownloadLog((prev) => [
-                                ...prev,
-                                "Download complete.",
-                            ]);
-                            await fetchDownloaded();
-                        } else if (event.type === "error") {
-                            setDownloadError(event.message);
+                        switch (event.type) {
+                            case "progress":
+                                setDownloadProgress({
+                                    downloaded: event.downloadedSize,
+                                    total: event.totalSize,
+                                    name: modelName,
+                                });
+                                break;
+                            case "done":
+                                setDownloadProgress(null);
+                                setRepo("");
+                                break;
+                            case "cancelled":
+                                setDownloadProgress(null);
+                                break;
+                            case "error":
+                                setError(event.message);
+                                setDownloadProgress(null);
+                                break;
                         }
                     } catch {
-                        // Skip malformed JSON lines
+                        // Skip malformed JSON
                     }
                 }
             }
         } catch (err) {
-            if ((err as Error).name !== "AbortError") {
-                setDownloadError(
+            if ((err as Error).name === "AbortError") {
+                setDownloadProgress(null);
+            } else if (!controller.signal.aborted) {
+                setError(
                     err instanceof Error ? err.message : "Download failed",
                 );
+                setDownloadProgress(null);
             }
         } finally {
-            setDownloading(null);
+            setDownloading(false);
             abortRef.current = null;
+            fetchModels();
         }
-    }
+    }, [repo, fetchModels]);
 
     // --- Cancel download ---
-    function handleCancel() {
+    const cancelDownload = useCallback(async () => {
         abortRef.current?.abort();
-    }
+        try {
+            await fetch(`${API_BASE}/api/llm/models/cancel`, {
+                method: "POST",
+                mode: "cors",
+            });
+        } catch {
+            // Best effort
+        }
+    }, []);
 
-    // --- Check if a file is downloaded ---
-    const downloadedNames = new Set(downloaded.map((d) => d.name));
-    const downloadedSizeByName = new Map(
-        downloaded.map((d) => [d.name, d.size]),
-    );
+    // --- Check model compatibility ---
+    const checkModel = useCallback(async (modelPath: string) => {
+        setCheckingModel(modelPath);
+        try {
+            const res = await fetch(`${API_BASE}/api/llm/models/check`, {
+                method: "POST",
+                mode: "cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    modelPath: modelPath.split("/").pop(),
+                }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data: ModelCompatInfo = await res.json();
+            setModelCompat((prev) => ({ ...prev, [modelPath]: data }));
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Compatibility check failed",
+            );
+        } finally {
+            setCheckingModel(null);
+        }
+    }, []);
+
+    // --- Select preset ---
+    const selectPreset = (presetRepo: string) => {
+        setRepo(presetRepo);
+        setShowPresets(false);
+    };
+
+    // --- Derived state ---
+    const loadedModelName = models?.loaded
+        ? (models.files.find((f) => f.path === models.loaded)?.name ?? null)
+        : null;
+    const hasModels = (models?.files.length ?? 0) > 0;
+
+    // ==================================================================
+    // Render
+    // ==================================================================
 
     return (
-        <main className="flex flex-col px-6 pt-16 pb-16 min-h-screen bg-[var(--bg-canvas)]">
-            {/* ---- Header ---- */}
-            <div className="flex items-center gap-3 mb-10">
-                <button
-                    onClick={() => navigate("/menu")}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-[11px] text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+        <main className="flex flex-col items-center px-6 pt-12 pb-16 min-h-screen bg-[var(--bg-canvas)]">
+            {/* ---- Back link ---- */}
+            <div className="w-full max-w-[680px] mb-6">
+                <Link
+                    to="/"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] transition-colors"
                 >
                     <ArrowLeftIcon />
-                    Back
-                </button>
-                <div className="flex-1" />
+                    Back to Home
+                </Link>
             </div>
 
-            {/* ---- Title ---- */}
-            <section className="flex flex-col items-center text-center mb-10">
-                <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[var(--text-primary)] m-0">
+            {/* ---- Header ---- */}
+            <section className="flex flex-col items-center text-center max-w-[560px] gap-2 mb-10">
+                <h1 className="text-[22px] font-bold tracking-[-0.02em] text-[var(--text-primary)] m-0">
                     Model Setup
                 </h1>
-                <p className="text-[12px] text-[var(--text-dim)] mt-2 max-w-[420px] leading-relaxed">
-                    Download GGUF models from Hugging Face to run locally with
-                    node-llama-cpp.
+                <p className="text-[13px] text-[var(--text-dim)] leading-relaxed max-w-[420px] m-0">
+                    Download and manage local LLM models from Hugging Face.
+                    Models are stored in your app data directory.
                 </p>
-                <a
-                    href={`https://huggingface.co/${HF_REPO}/tree/main`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] text-[var(--tiffany)] mt-1 hover:underline"
-                >
-                    {HF_REPO}
-                </a>
             </section>
 
-            {/* ---- Models Grid ---- */}
-            <section className="flex flex-col items-center w-full max-w-[680px] mx-auto">
-                {/* Section label */}
-                <div className="flex items-center gap-2 mb-4 w-full">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)]">
-                        Available models
-                    </span>
-                    <span className="text-[10px] text-[var(--text-dim)] tabular-nums">
-                        {downloaded.length}/{hfFiles.length} downloaded
-                    </span>
-                </div>
-
-                {/* Loading */}
-                {hfLoading && (
-                    <div className="flex items-center gap-2 text-[12px] text-[var(--text-dim)] py-8">
-                        <SpinnerIcon />
-                        Fetching model list from Hugging Face...
+            {/* ---- Download Section ---- */}
+            <section className="w-full max-w-[680px] mb-10">
+                <div className="ps-panel p-5">
+                    {/* Panel header */}
+                    <div className="ps-panel-header -mx-5 -mt-5 mb-4 rounded-t-sm">
+                        Download Model
                     </div>
-                )}
 
-                {/* Error */}
-                {hfError && (
-                    <div className="flex flex-col items-center gap-3 py-8">
-                        <p className="text-[12px] text-red-400">{hfError}</p>
-                        <button
-                            onClick={fetchHfFiles}
-                            className="px-3 py-1 rounded-sm text-[11px] font-medium text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-panel)] hover:border-[var(--tiffany)] transition-colors"
-                        >
-                            Retry
-                        </button>
-                    </div>
-                )}
-
-                {/* File cards */}
-                {!hfLoading && !hfError && (
-                    <div className="flex flex-col gap-2 w-full">
-                        {hfFiles.map((file) => {
-                            const isDownloaded = downloadedNames.has(
-                                file.rfilename,
-                            );
-                            const localSize = downloadedSizeByName.get(
-                                file.rfilename,
-                            );
-                            const isDownloading =
-                                downloading === file.rfilename;
-
-                            return (
-                                <div
-                                    key={file.rfilename}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-sm border transition-colors ${
-                                        isDownloaded
-                                            ? "bg-[var(--bg-surface)] border-[var(--border-panel)]"
-                                            : "bg-[var(--bg-panel)] border-transparent"
-                                    }`}
+                    {/* Repo input row */}
+                    <div className="flex gap-2">
+                        {/* Presets dropdown button */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                className="btn-secondary text-[12px] px-3 py-2 gap-1.5"
+                                onClick={() => setShowPresets(!showPresets)}
+                            >
+                                <span className="whitespace-nowrap">
+                                    Presets
+                                </span>
+                                <svg
+                                    width="10"
+                                    height="10"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                 >
-                                    {/* Status icon */}
-                                    <span
-                                        className={
-                                            isDownloaded
-                                                ? "text-[var(--tiffany)]"
-                                                : "text-[var(--text-dim)]"
-                                        }
-                                    >
-                                        {isDownloaded ? (
-                                            <CheckCircleIcon />
-                                        ) : (
-                                            <FolderIcon />
+                                    <path d="M6 9l6 6 6-6" />
+                                </svg>
+                            </button>
+
+                            {/* Preset dropdown menu */}
+                            {showPresets && (
+                                <div className="absolute left-0 top-full mt-1 z-10 border border-[var(--border-subtle)] rounded-sm bg-[var(--bg-surface)] shadow-sm min-w-[280px]">
+                                    <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)] border-b border-[var(--border-subtle)] flex items-center justify-between">
+                                        <span>Preset Models</span>
+                                        {checkingPresets && <LoaderIcon />}
+                                    </div>
+                                    {PRESET_MODELS.map((preset) => {
+                                        const compat =
+                                            presetCompat[preset.repo];
+                                        const isChecking =
+                                            checkingPresets &&
+                                            compat === undefined;
+
+                                        return (
+                                            <button
+                                                key={preset.repo}
+                                                type="button"
+                                                className="w-full text-left px-3 py-2 text-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-subtle)] last:border-b-0 flex items-center gap-2"
+                                                onClick={() =>
+                                                    selectPreset(preset.repo)
+                                                }
+                                            >
+                                                <span className="flex-1 min-w-0">
+                                                    <span className="font-medium">
+                                                        {preset.label}
+                                                    </span>
+                                                    <span className="block text-[10px] text-[var(--text-dim)] font-mono mt-0.5 truncate">
+                                                        {preset.repo}
+                                                    </span>
+                                                </span>
+                                                {/* Compatibility dot */}
+                                                {isChecking ? (
+                                                    <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-[var(--text-dim)] animate-pulse" />
+                                                ) : compat ? (
+                                                    <span
+                                                        className={`shrink-0 w-2.5 h-2.5 rounded-full ${
+                                                            compat.score >= 0.8
+                                                                ? "bg-lime-400 lime-pulse-dot"
+                                                                : compat.score >=
+                                                                    0.5
+                                                                  ? "bg-amber-400"
+                                                                  : "bg-red-400"
+                                                        }`}
+                                                        title={`Compatibility: ${compat.percent}`}
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        className="shrink-0 w-2.5 h-2.5 rounded-full bg-[var(--border-subtle)]"
+                                                        title="Compatibility unknown"
+                                                    />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1">
+                            <input
+                                type="text"
+                                className="input-field w-full text-[12px]"
+                                placeholder="hf:user/repo or hf:user/repo:file.gguf"
+                                value={repo}
+                                onChange={(e) => setRepo(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !downloading) {
+                                        startDownload();
+                                    }
+                                }}
+                                disabled={downloading}
+                            />
+                        </div>
+
+                        {!downloading ? (
+                            <button
+                                className="btn-primary text-[12px] px-4 py-2"
+                                onClick={startDownload}
+                                disabled={!repo.trim()}
+                            >
+                                <DownloadIcon size={14} />
+                                Download
+                            </button>
+                        ) : (
+                            <div className="flex flex-col gap-1.5">
+                                <button
+                                    className="btn-secondary text-[12px] px-4 py-2 text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 w-full"
+                                    onClick={cancelDownload}
+                                >
+                                    <XIcon />
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Error message */}
+                    {error && (
+                        <div className="mt-4 flex items-start gap-2 p-3 rounded-sm bg-red-50 border border-red-200 text-[12px] text-red-700">
+                            <span className="shrink-0 mt-0.5 text-red-400">
+                                <AlertIcon />
+                            </span>
+                            <div className="flex-1 min-w-0">{error}</div>
+                            <button
+                                type="button"
+                                className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                                onClick={() => setError(null)}
+                            >
+                                <XIcon />
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="mt-3">
+                        {downloadProgress && (
+                            <div className="w-full">
+                                {/* Progress bar on top */}
+                                <div className="progress-bar mb-1">
+                                    <div
+                                        className="progress-bar-fill"
+                                        style={{
+                                            width:
+                                                downloadProgress.total > 0
+                                                    ? `${Math.round((downloadProgress.downloaded / downloadProgress.total) * 100)}%`
+                                                    : "20%",
+                                            transition:
+                                                downloadProgress.total > 0
+                                                    ? "width 0.3s var(--transition-easing)"
+                                                    : "none",
+                                            animation:
+                                                downloadProgress.total === 0
+                                                    ? "pulse-ring 2s ease-out infinite"
+                                                    : undefined,
+                                        }}
+                                    />
+                                </div>
+                                {/* Description text below progress bar */}
+                                <div className="flex justify-between text-[10px]">
+                                    <span className="text-[var(--text-dim)] tabular-nums">
+                                        {downloadProgress.total > 0
+                                            ? formatPercent(
+                                                  downloadProgress.downloaded,
+                                                  downloadProgress.total,
+                                              )
+                                            : formatBytes(
+                                                  downloadProgress.downloaded,
+                                              )}
+                                    </span>
+                                    <span className="text-[var(--text-dim)] tabular-nums">
+                                        {formatBytes(
+                                            downloadProgress.downloaded,
+                                        )}
+                                        {downloadProgress.total > 0 && (
+                                            <>
+                                                /
+                                                {formatBytes(
+                                                    downloadProgress.total,
+                                                )}
+                                            </>
                                         )}
                                     </span>
-
-                                    {/* File info */}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate m-0">
-                                            {file.rfilename}
-                                        </p>
-                                        <p className="text-[10px] text-[var(--text-dim)] m-0">
-                                            {isDownloaded && localSize
-                                                ? `Downloaded — ${formatBytes(localSize)}`
-                                                : file.size
-                                                  ? formatBytes(file.size)
-                                                  : "Unknown size"}
-                                        </p>
-                                    </div>
-
-                                    {/* Action button */}
-                                    {isDownloaded ? (
-                                        <span className="text-[10px] text-[var(--tiffany)] font-medium">
-                                            Ready
-                                        </span>
-                                    ) : isDownloading ? (
-                                        <button
-                                            onClick={handleCancel}
-                                            className="flex items-center gap-1.5 px-3 py-1 rounded-sm text-[11px] font-medium text-red-400 bg-red-400/10 border border-red-400/30 hover:bg-red-400/20 transition-colors"
-                                        >
-                                            <SpinnerIcon />
-                                            Cancel
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() =>
-                                                handleDownload(
-                                                    `hf:${HF_REPO}`,
-                                                    file.rfilename,
-                                                )
-                                            }
-                                            className="flex items-center gap-1.5 px-3 py-1 rounded-sm text-[11px] font-medium text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-panel)] hover:border-[var(--tiffany)] hover:bg-[var(--bg-hover)] transition-colors"
-                                        >
-                                            <DownloadIcon />
-                                            Download
-                                        </button>
-                                    )}
                                 </div>
-                            );
-                        })}
-
-                        {hfFiles.length === 0 && (
-                            <p className="text-[12px] text-[var(--text-dim)] text-center py-8">
-                                No .gguf files found in this repository.
-                            </p>
+                            </div>
                         )}
                     </div>
-                )}
+                </div>
             </section>
 
-            {/* ---- Download progress log ---- */}
-            {(downloadLog.length > 0 || downloadError) && (
-                <section className="mt-8 w-full max-w-[680px] mx-auto">
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)]">
-                            Download progress
+            {/* ---- Models Directory Info ---- */}
+            {models && (
+                <section className="w-full max-w-[680px] mb-8">
+                    <div className="flex items-center gap-2">
+                        <FolderIcon />
+                        <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+                            Models directory
                         </span>
-                    </div>
-                    <div className="bg-[var(--bg-panel)] border border-[var(--border-panel)] rounded-sm p-3 max-h-[200px] overflow-y-auto font-mono text-[11px] leading-relaxed text-[var(--text-dim)]">
-                        {downloadLog.map((line, i) => (
-                            <div key={i} className="whitespace-pre-wrap">
-                                {line}
-                            </div>
-                        ))}
-                        {downloadError && (
-                            <div className="text-red-400 mt-1">
-                                Error: {downloadError}
-                            </div>
-                        )}
-                        <div ref={logEndRef} />
+                        <code className="text-[10px] text-[var(--text-dim)] truncate max-w-[400px]">
+                            {models.modelsDir}
+                        </code>
+                        <button
+                            type="button"
+                            className="btn-secondary text-[11px] px-2.5 py-1 gap-1 shrink-0"
+                            onClick={async () => {
+                                try {
+                                    await fetch(
+                                        `${API_BASE}/api/llm/models/open-dir`,
+                                        {
+                                            method: "POST",
+                                            mode: "cors",
+                                        },
+                                    );
+                                } catch {
+                                    // Best effort
+                                }
+                            }}
+                            title="Open models folder in file manager"
+                        >
+                            <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={1.5}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                <path d="M15 3h6v6" />
+                                <path d="M10 14 21 3" />
+                            </svg>
+                            Open Folder
+                        </button>
                     </div>
                 </section>
             )}
 
-            {/* ---- Loaded model indicator ---- */}
-            {loadedModel && (
-                <section className="mt-6 w-full max-w-[680px] mx-auto">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)]">
-                            Loaded model
+            {/* ---- Loaded Model Status ---- */}
+            {models && loadedModelName && (
+                <section className="w-full max-w-[680px] mb-6">
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-sm bg-[var(--bg-surface)] border border-[var(--tiffany-soft)]">
+                        <span className="text-[var(--tiffany)]">
+                            <CircleDotIcon />
                         </span>
-                        <span className="text-[10px] text-[var(--tiffany)] font-mono">
-                            {loadedModel.split("/").pop()}
+                        <span className="text-[12px] text-[var(--text-secondary)]">
+                            Currently loaded:
+                        </span>
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                            {loadedModelName}
                         </span>
                     </div>
                 </section>
             )}
+
+            {/* ---- Downloaded Models List ---- */}
+            <section className="w-full max-w-[680px]">
+                <div className="glass-card">
+                    <div className="ps-panel-header px-4 py-2.5 flex items-center justify-between">
+                        <span>Downloaded Models</span>
+                        <span className="text-[10px] font-normal normal-case tracking-normal tabular-nums">
+                            {models?.files.length ?? 0} model
+                            {(models?.files.length ?? 0) !== 1 ? "s" : ""}
+                        </span>
+                    </div>
+
+                    {!hasModels && (
+                        <div className="px-4 py-8 text-center">
+                            <div className="text-[var(--text-dim)] opacity-30 mb-3">
+                                <ChipIcon />
+                            </div>
+                            <p className="text-[12px] text-[var(--text-dim)] m-0">
+                                No models downloaded yet.
+                            </p>
+                            <p className="text-[11px] text-[var(--text-dim)] mt-1 m-0">
+                                Enter a Hugging Face repo above to get started.
+                            </p>
+                        </div>
+                    )}
+
+                    {hasModels && (
+                        <div className="divide-y divide-[var(--border-subtle)]">
+                            {models!.files.map((file) => {
+                                const isLoaded = file.path === models!.loaded;
+                                const compat =
+                                    file.path in modelCompat
+                                        ? modelCompat[file.path]
+                                        : null;
+                                const isChecking = checkingModel === file.path;
+
+                                return (
+                                    <div
+                                        key={file.path}
+                                        className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                                            isLoaded
+                                                ? "bg-[var(--bg-hover)]"
+                                                : "hover:bg-[var(--bg-hover)]"
+                                        }`}
+                                    >
+                                        {/* Icon */}
+                                        <span
+                                            className={`shrink-0 ${
+                                                isLoaded
+                                                    ? "text-[var(--tiffany)]"
+                                                    : "text-[var(--text-dim)]"
+                                            }`}
+                                        >
+                                            <FileIcon />
+                                        </span>
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={`text-[12px] font-medium truncate ${
+                                                        isLoaded
+                                                            ? "text-[var(--text-primary)]"
+                                                            : "text-[var(--text-primary)]"
+                                                    }`}
+                                                >
+                                                    {file.name}
+                                                </span>
+                                                {isLoaded && (
+                                                    <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium text-[var(--tiffany-deep)] bg-[var(--tiffany-glow)] px-1.5 py-0.5 rounded-sm">
+                                                        <CircleDotIcon />
+                                                        Loaded
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-[10px] text-[var(--text-dim)] font-mono">
+                                                {formatBytes(file.size)}
+                                            </span>
+
+                                            {/* Compatibility info */}
+                                            {compat && (
+                                                <div className="flex items-center gap-2 mt-1.5 text-[10px]">
+                                                    <span
+                                                        className={`inline-flex items-center gap-1 ${
+                                                            compat.compatibility
+                                                                .score >= 0.8
+                                                                ? "text-green-600"
+                                                                : compat
+                                                                        .compatibility
+                                                                        .score >=
+                                                                    0.5
+                                                                  ? "text-amber-600"
+                                                                  : "text-red-600"
+                                                        }`}
+                                                    >
+                                                        {compat.compatibility
+                                                            .score >= 0.8 ? (
+                                                            <CheckIcon />
+                                                        ) : (
+                                                            <AlertIcon />
+                                                        )}
+                                                        Compat:{" "}
+                                                        {
+                                                            compat.compatibility
+                                                                .percent
+                                                        }
+                                                    </span>
+                                                    <span className="text-[var(--text-dim)]">
+                                                        Flash Attn:{" "}
+                                                        {
+                                                            compat
+                                                                .flashAttention
+                                                                .percent
+                                                        }
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            {/* Check compatibility */}
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-medium text-[var(--text-dim)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-panel)] transition-colors disabled:opacity-40"
+                                                onClick={() =>
+                                                    checkModel(file.path)
+                                                }
+                                                disabled={isChecking}
+                                            >
+                                                {isChecking ? (
+                                                    <LoaderIcon />
+                                                ) : (
+                                                    <ChipIcon />
+                                                )}
+                                                Check
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* ---- Footer tip ---- */}
+            <p className="mt-8 text-[10px] text-[var(--text-dim)] text-center max-w-[400px] leading-relaxed">
+                Models are downloaded to your app data directory and run locally
+                via node-llama-cpp. Larger models require more RAM and disk
+                space.
+            </p>
         </main>
     );
 }

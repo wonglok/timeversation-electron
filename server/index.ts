@@ -3,7 +3,7 @@ import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { BrowserWindow } from "electron";
+import { app as electronApp, BrowserWindow } from "electron";
 import { createChatRouter } from "./routes/chat";
 import { createConversationsRouter } from "./routes/conversations";
 import { createOpenAiNodeLlamaRouter } from "./routes/openai-node-llama";
@@ -71,9 +71,7 @@ async function createServer({
     app.use("/api/chat", chatRouter);
 
     // --- Local LLM (node-llama-cpp) ---
-    const modelsDir = workspacePath
-        ? `${workspacePath}/models`
-        : undefined;
+    const modelsDir = path.join(electronApp.getPath("appData"), "ai-models");
     const llmRouter = await createOpenAiNodeLlamaRouter({ modelsDir });
     app.use("/api/llm", llmRouter);
 
