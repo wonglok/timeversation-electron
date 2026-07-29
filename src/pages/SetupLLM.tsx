@@ -558,7 +558,7 @@ export function SetupLLM() {
                     className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] transition-colors"
                 >
                     <ArrowLeftIcon />
-                    Back to Home
+                    Back
                 </Link>
             </div>
 
@@ -1005,7 +1005,6 @@ export function SetupLLM() {
                 via node-llama-cpp. Larger models require more RAM and disk
                 space.
             </p>
-
         </main>
     );
 }
