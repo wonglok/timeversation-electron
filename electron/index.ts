@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { app, shell, BrowserWindow } from "electron";
 // import { registerLlmRpc } from "./rpc/llmRpc.ts";
-import { startServer } from "../server/index.ts";
+import { startServer } from "../server/index";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
