@@ -12,3 +12,5 @@ byoa
 
 tsconfig.node.tsbuildinfo
 tsconfig.tsbuildinfo
+
+*.d.ts

@@ -17,9 +17,7 @@
         "allowImportingTsExtensions": true,
         "resolveJsonModule": false,
         "isolatedModules": true,
-        "composite": true,
-        "emitDeclarationOnly": true,
-        "declaration": true,
+        "noEmit": true,
 
         "strict": true,
         "strictNullChecks": true,

@@ -27,6 +27,5 @@
         "noImplicitThis": true,
         "noImplicitOverride": true
     },
-    "include": ["./src", "./electron"],
-    "references": [{ "path": "./tsconfig.node.json" }]
+    "include": ["./src", "./electron"]
 }
