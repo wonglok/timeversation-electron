@@ -292,11 +292,7 @@ export function SetupLLM() {
         name?: string;
     } | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [checkingModel, setCheckingModel] = useState<string | null>(null);
     const [loadingModel, setLoadingModel] = useState<string | null>(null);
-    const [modelCompat, setModelCompat] = useState<
-        Record<string, ModelCompatInfo>
-    >({});
     const abortRef = useRef<AbortController | null>(null);
     const [showPresets, setShowPresets] = useState(false);
     const [presetCompat, setPresetCompat] = useState<
@@ -473,32 +469,6 @@ export function SetupLLM() {
         }
     }, []);
 
-    // --- Check model compatibility ---
-    const checkModel = useCallback(async (modelPath: string) => {
-        setCheckingModel(modelPath);
-        try {
-            const res = await fetch(`${API_BASE}/api/llm/models/check`, {
-                method: "POST",
-                mode: "cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    modelPath: modelPath.split("/").pop(),
-                }),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data: ModelCompatInfo = await res.json();
-            setModelCompat((prev) => ({ ...prev, [modelPath]: data }));
-        } catch (err) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "Compatibility check failed",
-            );
-        } finally {
-            setCheckingModel(null);
-        }
-    }, []);
-
     // --- Load model and navigate to chat ---
     const loadModel = useCallback(
         async (modelPath: string) => {
@@ -539,10 +509,6 @@ export function SetupLLM() {
     };
 
     // --- Derived state ---
-    const loadedModelName = models?.loaded
-        ? (models.files.find((f) => f.path === models.loaded)?.name ?? null)
-        : null;
-
     const hasModels = (models?.files.length ?? 0) > 0;
 
     // ==================================================================
@@ -854,11 +820,6 @@ export function SetupLLM() {
                         <div className="divide-y divide-[var(--border-subtle)]">
                             {models!.files.map((file) => {
                                 const isLoaded = file.path === models!.loaded;
-                                const compat =
-                                    file.path in modelCompat
-                                        ? modelCompat[file.path]
-                                        : null;
-                                const isChecking = checkingModel === file.path;
 
                                 return (
                                     <div
@@ -945,22 +906,6 @@ export function SetupLLM() {
 
                                         {/* Actions */}
                                         <div className="flex items-center gap-1.5 shrink-0">
-                                            {/* Check compatibility */}
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-medium text-[var(--text-dim)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-panel)] transition-colors disabled:opacity-40"
-                                                onClick={() =>
-                                                    checkModel(file.path)
-                                                }
-                                                disabled={isChecking}
-                                            >
-                                                {isChecking ? (
-                                                    <LoaderIcon />
-                                                ) : (
-                                                    <ChipIcon />
-                                                )}
-                                                Check
-                                            </button>
                                             {/* Load model */}
                                             <button
                                                 type="button"
