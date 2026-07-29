@@ -118,7 +118,7 @@ export async function createOpenAiNodeLlamaRouter({
     // POST /chat — OpenAI-compatible chat completions (SSE streaming)
     // ------------------------------------------------------------------
 
-    router.post("/chat", async (req, res) => {
+    router.post("/chat/completions", async (req, res) => {
         const {
             messages,
             stream = true,

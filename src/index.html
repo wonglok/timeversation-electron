@@ -11,8 +11,75 @@
 </head>
 
 <body>
-    <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    <div id="root">
+        <!-- cssloader -->
+        <style>
+            #cssloader {
+                position: fixed;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                background: #F2F5F5;
+                z-index: 9999;
+                transition: opacity 0.4s ease-out;
+            }
+            #cssloader.hide {
+                opacity: 0;
+                pointer-events: none;
+            }
+            .loader-ring {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                border: 3px solid rgba(129, 216, 208, 0.18);
+                border-top-color: #81D8D0;
+                animation: loader-spin 0.8s linear infinite;
+            }
+            @keyframes loader-spin {
+                to { transform: rotate(360deg); }
+            }
+            .loader-label {
+                margin-top: 18px;
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Proxima Nova", Inter, system-ui, sans-serif;
+                font-size: 13px;
+                font-weight: 600;
+                color: #5C7A8A;
+                letter-spacing: -0.01em;
+            }
+            .loader-sub {
+                margin-top: 4px;
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+                font-size: 11px;
+                color: #8A9DA8;
+            }
+        </style>
+        <div id="cssloader">
+            <div class="loader-ring"></div>
+            <div class="loader-label">Timeversation</div>
+            <div class="loader-sub">Loading...</div>
+        </div>
+        <script>
+            // Hide the loader once React mounts
+            window.addEventListener("DOMContentLoaded", function () {
+                var obs = new MutationObserver(function () {
+                    var root = document.getElementById("root");
+                    if (root && root.children.length > 1) {
+                        var loader = document.getElementById("cssloader");
+                        if (loader) {
+                            loader.classList.add("hide");
+                            setTimeout(function () { loader.remove(); }, 500);
+                        }
+                        obs.disconnect();
+                    }
+                });
+                obs.observe(document.getElementById("root"), { childList: true, subtree: true });
+            });
+        </script>
+    </div>
+
+    <script type="module" src="./index.tsx"> </script>
 </body>
 
 </html>

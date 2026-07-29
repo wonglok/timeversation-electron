@@ -4,6 +4,7 @@ import path from "node:path";
 import { appendThreadMessage } from "../store/threadStore";
 import { OpenAI } from "openai";
 import { ChatCompletion } from "openai/resources/index.mjs";
+import { getConversationsDb } from "../routes/conversations";
 
 // ============================================================================
 // SSE encoder helpers
@@ -100,60 +101,37 @@ export const handleLocalSDK = async ({
         // Directory already exists — fine
     }
 
-    console.log("=== Tool calling ===\n");
-
-    const client = new OpenAI({
-        apiKey: "ppap",
-        baseURL: `http://localhost:8390/api/llm/chat`,
-    });
-
-    console.log(client);
-
-    // --- Step 1: Ask a question that triggers a tool call ---
-    const response1 = await client.chat.completions.create({
-        model: ``,
-        messages: [{ role: "user", content: "What's the weather in Tokyo?" }],
-        stream: true,
-    });
-
-    console.log(response1);
-
-    for await (let item of response1) {
-        console.log(item.choices[0]?.delta.content);
-    }
-
-    // // Abort controller so we can cancel the turn when the client disconnects
-    // const ac = new AbortController();
+    // Abort controller so we can cancel the turn when the client disconnects
+    const ac = new AbortController();
 
     // let thread;
     // let threadId: string | null = null;
 
-    // if (conversationId) {
-    //     try {
-    //         const db = await getConversationsDb(workspacePath);
-    //         const conv = db.data.conversations.find(
-    //             (c) => c.id === conversationId,
-    //         );
-    //         if (conv?.sessionId) {
-    //             // Resume the existing Codex thread so context carries over
-    //             thread = codex.resumeThread(conv.sessionId, {
-    //                 workingDirectory: sessionPath,
-    //                 skipGitRepoCheck: true,
-    //             });
-    //             threadId = conv.sessionId;
-
-    //             writeSSEEvent(
-    //                 res,
-    //                 JSON.stringify({
-    //                     type: "thread.started",
-    //                     thread_id: threadId,
-    //                 }),
-    //             );
-    //         }
-    //     } catch (_) {
-    //         // DB read failed — fall through to start a fresh thread
-    //     }
-    // }
+    if (conversationId) {
+        try {
+            const db = await getConversationsDb(workspacePath);
+            const conv = db.data.conversations.find(
+                (c) => c.id === conversationId,
+            );
+            if (conv?.sessionId) {
+                // // Resume the existing Codex thread so context carries over
+                // thread = codex.resumeThread(conv.sessionId, {
+                //     workingDirectory: sessionPath,
+                //     skipGitRepoCheck: true,
+                // });
+                // threadId = conv.sessionId;
+                // writeSSEEvent(
+                //     res,
+                //     JSON.stringify({
+                //         type: "thread.started",
+                //         thread_id: threadId,
+                //     }),
+                // );
+            }
+        } catch (_) {
+            // DB read failed — fall through to start a fresh thread
+        }
+    }
 
     // if (!thread) {
     //     thread = codex.startThread({
@@ -162,91 +140,74 @@ export const handleLocalSDK = async ({
     //     });
     // }
 
-    // // --- Persist user message ---
-    // if (conversationId) {
-    //     appendThreadMessage(workspacePath, conversationId, "user", message);
-    // }
+    // --- Persist user message ---
+    if (conversationId) {
+        appendThreadMessage(workspacePath, conversationId, "user", message);
+    }
 
     // // Accumulate assistant text for thread persistence
-    // let assistantText = "";
+    let assistantText = "";
 
-    // // --- Client disconnect → abort turn ---
-    // req.on("close", () => {
-    //     if (!ac.signal.aborted) {
-    //         ac.abort();
-    //     }
-    // });
+    // --- Client disconnect → abort turn ---
+    req.on("close", () => {
+        if (!ac.signal.aborted) {
+            ac.abort();
+        }
+    });
 
-    // try {
-    //     // Run the turn with streaming events
-    //     const { events } = await thread.runStreamed(message, {
-    //         signal: ac.signal,
-    //     });
+    try {
+        console.log("=== Tool calling ===\n");
 
-    //     // Iterate the async generator and forward each event as SSE
-    //     for await (const event of events) {
-    //         // Collect agent_message text for thread persistence
-    //         if (
-    //             event.type === "item.completed" &&
-    //             event.item.type === "agent_message"
-    //         ) {
-    //             assistantText += event.item.text;
-    //         }
+        const client = new OpenAI({
+            apiKey: "ppap",
+            baseURL: `http://localhost:8390/api/llm`,
+        });
 
-    //         // Persist thread ID on the first thread.started event so
-    //         // subsequent turns in this conversation can resume the thread.
-    //         if (
-    //             event.type === "thread.started" &&
-    //             !threadId &&
-    //             conversationId
-    //         ) {
-    //             threadId = event.thread_id;
-    //             try {
-    //                 const db = await getConversationsDb(workspacePath);
-    //                 const conv = db.data.conversations.find(
-    //                     (c) => c.id === conversationId,
-    //                 );
-    //                 if (conv) {
-    //                     conv.sessionId = threadId;
-    //                     conv.updatedAt = new Date().toISOString();
-    //                     await db.write();
-    //                 }
-    //             } catch (_) {
-    //                 // Best-effort persistence
-    //             }
-    //         }
+        console.log(client);
 
-    //         // Forward the event as an SSE data line
-    //         writeSSEEvent(res, JSON.stringify(event));
-    //     }
+        // --- Step 1: Ask a question that triggers a tool call ---
+        const response1 = await client.chat.completions.create({
+            model: ``,
+            messages: [
+                { role: "user", content: "What's the weather in Tokyo?" },
+            ],
+            stream: true,
+        });
 
-    //     // --- Persist assistant text ---
-    //     if (conversationId && assistantText.trim()) {
-    //         await appendThreadMessage(
-    //             workspacePath,
-    //             conversationId,
-    //             "assistant",
-    //             assistantText.trim(),
-    //         );
-    //     }
+        console.log(response1);
 
-    //     // Signal end of stream
-    //     writeSSEEvent(res, "[DONE]");
-    // } catch (err: any) {
-    //     if (err.name === "AbortError") {
-    //         // Client disconnected — graceful stop
-    //         writeSSEEvent(res, "[DONE]");
-    //     } else {
-    //         writeSSEEvent(
-    //             res,
-    //             JSON.stringify({
-    //                 type: "error",
-    //                 message: err.message ?? "Codex SDK stream failed",
-    //             }),
-    //             "error",
-    //         );
-    //     }
-    // } finally {
-    //     res.end();
-    // }
+        for await (let item of response1) {
+            console.log(item.choices[0]?.delta.content);
+            writeSSEEvent(res, JSON.stringify(item.choices[0]?.delta.content));
+        }
+
+        // --- Persist assistant text ---
+        if (conversationId && assistantText.trim()) {
+            await appendThreadMessage(
+                workspacePath,
+                conversationId,
+                "assistant",
+                assistantText.trim(),
+            );
+        }
+
+        // Signal end of stream
+        writeSSEEvent(res, "[DONE]");
+    } catch (err: any) {
+        if (err.name === "AbortError") {
+            // Client disconnected — graceful stop
+            writeSSEEvent(res, "[DONE]");
+        } else {
+            writeSSEEvent(
+                res,
+                JSON.stringify({
+                    type: "error",
+                    message: err.message ?? "Codex SDK stream failed",
+                }),
+                "error",
+            );
+        }
+    } finally {
+        res.end();
+    }
 };
