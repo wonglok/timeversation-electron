@@ -436,9 +436,12 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
     function parseAcpLine(line: string): void {
         if (!line.trim()) return;
 
-        line = line.trim().replace("data: ", "").replace("event: ", "");
+        // Skip SSE metadata lines (event: …, :ok, etc.)
+        if (line.trim().startsWith("event:") || line.trim().startsWith(":")) return;
 
-        if (line === ":ok" || line === "[DONE]") return;
+        line = line.trim().replace("data: ", "");
+
+        if (line === "[DONE]") return;
 
         let parsed: any;
         try {
@@ -450,6 +453,19 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
 
         if (!parsed || typeof parsed !== "object") {
             appendBubble("text", { text: line });
+            return;
+        }
+
+        // --- Local SDK stream format (handleLocalSDK.ts) ---
+        // { type: "thinking", content: "..." } or { type: "text", content: "..." }
+        if (
+            (parsed.type === "thinking" || parsed.type === "text") &&
+            typeof parsed.content === "string"
+        ) {
+            appendBubble(
+                parsed.type === "thinking" ? "thinking" : "text",
+                { text: parsed.content },
+            );
             return;
         }
 

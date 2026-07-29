@@ -164,13 +164,15 @@ export const handleLocalSDK = async ({
             workspacePath,
             conversationId as string,
         );
-        console.log(msg);
+        // console.log(msg);
 
         let assistantText = "";
+        let thinkingText = "";
 
         // --- Step 1: Ask a question that triggers a tool call ---
         const responseStream = await client.chat.completions.create({
             model: `default`,
+            reasoning_effort: "high",
             messages: [
                 ...msg.map((r) => {
                     return {
@@ -184,9 +186,32 @@ export const handleLocalSDK = async ({
         });
 
         for await (let item of responseStream) {
-            if (item.choices[0]?.delta.content) {
-                assistantText += `${item.choices[0]?.delta.content}`;
-                writeSSEEvent(res, item.choices[0]?.delta.content);
+            const delta = item.choices[0]?.delta as
+                | Record<string, any>
+                | undefined;
+
+            // Handle thinking/reasoning tokens (e.g. DeepSeek, o1-style models)
+            if (delta?.reasoning_content) {
+                thinkingText += delta.reasoning_content;
+                writeSSEEvent(
+                    res,
+                    JSON.stringify({
+                        type: "thinking",
+                        content: delta.reasoning_content,
+                    }),
+                );
+            }
+
+            // Handle regular text content
+            if (delta?.content) {
+                assistantText += delta.content;
+                writeSSEEvent(
+                    res,
+                    JSON.stringify({
+                        type: "text",
+                        content: delta.content,
+                    }),
+                );
             }
         }
 
