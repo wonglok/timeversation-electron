@@ -148,6 +148,7 @@ export const handlePIAgentSession = async ({
     const args = [
         //
         JSON.stringify(message),
+        "--print",
         "--continue",
     ];
 
@@ -155,7 +156,7 @@ export const handlePIAgentSession = async ({
     const proc = spawn("pi", args, {
         env: process.env,
         cwd: sessionPath,
-        stdio: ["pipe", "pipe", "ignore"],
+        stdio: ["pipe", "pipe", "pipe"],
     });
 
     // --- UTF-8 decoders ---
