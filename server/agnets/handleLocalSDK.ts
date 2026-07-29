@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { appendThreadMessage } from "../store/threadStore";
+import { appendThreadMessage, getThreadMessages } from "../store/threadStore";
 import { OpenAI } from "openai";
 import { ChatCompletion } from "openai/resources/index.mjs";
 import { getConversationsDb } from "../routes/conversations";
@@ -146,7 +146,6 @@ export const handleLocalSDK = async ({
     }
 
     // // Accumulate assistant text for thread persistence
-    let assistantText = "";
 
     // --- Client disconnect → abort turn ---
     req.on("close", () => {
@@ -156,29 +155,30 @@ export const handleLocalSDK = async ({
     });
 
     try {
-        console.log("=== Tool calling ===\n");
-
         const client = new OpenAI({
             apiKey: "ppap",
             baseURL: `http://localhost:8390/api/llm`,
         });
 
-        console.log(client);
+        const msg = await getThreadMessages(
+            workspacePath,
+            conversationId as string,
+        );
+
+        let assistantText = "";
 
         // --- Step 1: Ask a question that triggers a tool call ---
-        const response1 = await client.chat.completions.create({
-            model: ``,
-            messages: [
-                { role: "user", content: "What's the weather in Tokyo?" },
-            ],
+        const responseStream = await client.chat.completions.create({
+            model: `default`,
+            messages: [...msg, { role: "user", content: message }],
             stream: true,
         });
 
-        console.log(response1);
-
-        for await (let item of response1) {
-            console.log(item.choices[0]?.delta.content);
-            writeSSEEvent(res, JSON.stringify(item.choices[0]?.delta.content));
+        for await (let item of responseStream) {
+            if (item.choices[0]?.delta.content) {
+                assistantText += `${item.choices[0]?.delta.content}`;
+                writeSSEEvent(res, item.choices[0]?.delta.content);
+            }
         }
 
         // --- Persist assistant text ---
