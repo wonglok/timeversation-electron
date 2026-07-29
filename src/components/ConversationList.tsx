@@ -355,24 +355,27 @@ export function ConversationList() {
     }
 
     return (
-        <aside className="w-64 shrink-0 flex flex-col h-screen border-r border-[var(--border-subtle)] bg-[var(--bg-card)]">
-            {/* Header */}
-            <header className="flex items-center gap-3 py-4 px-6 border-b border-[var(--border-subtle)] shrink-0 bg-gray-500">
+        <aside className="w-60 shrink-0 flex flex-col h-screen border-r border-[var(--border-panel)] bg-[var(--bg-panel)]">
+            {/* Back navigation — compact panel section */}
+            <div className="px-3 py-2 border-b border-[var(--border-panel)]">
                 <button
-                    className=" !px-3 !py-1.5 text-sm text-white border-white border rounded-lg"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors"
                     onClick={() => navigate("/")}
                 >
-                    Back
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                    Home
                 </button>
-            </header>
+            </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border-subtle)]">
-                <h3 className="text-[0.8rem] font-bold text-[var(--text-primary)] m-0 tracking-[-0.01em]">
+            {/* Panel header — Photoshop tab style */}
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border-panel)]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)] select-none">
                     Conversations
-                </h3>
+                </span>
                 <button
-                    className="flex items-center justify-center w-7 h-7 rounded-md text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)] transition-colors"
+                    className="flex items-center justify-center w-5 h-5 rounded-sm text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors"
                     onClick={handleNew}
                     title="New conversation"
                 >
@@ -381,9 +384,9 @@ export function ConversationList() {
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto py-2">
+            <div className="flex-1 overflow-y-auto py-1">
                 {loading && filtered.length === 0 && (
-                    <p className="text-[0.75rem] text-[var(--text-dim)] text-center py-8">
+                    <p className="text-[11px] text-[var(--text-dim)] text-center py-8">
                         Loading...
                     </p>
                 )}
@@ -391,10 +394,8 @@ export function ConversationList() {
                 {!loading && filtered.length === 0 && (
                     <div className="flex flex-col items-center gap-2 py-10 px-4">
                         <ChatIcon />
-                        <p className="text-[0.75rem] text-[var(--text-dim)] text-center leading-relaxed">
-                            No conversations yet.
-                            <br />
-                            Send a message to start one.
+                        <p className="text-[11px] text-[var(--text-dim)] text-center leading-relaxed">
+                            No conversations yet
                         </p>
                     </div>
                 )}
@@ -406,14 +407,14 @@ export function ConversationList() {
                         <div
                             key={conv.id}
                             onClick={() => !isRenaming && handleSelect(conv.id)}
-                            className={`group relative flex flex-col gap-0.5 px-4 py-2.5 mx-2 rounded-lg transition-all duration-200 ${
+                            className={`group relative flex flex-col gap-0.5 mx-1 my-0.5 px-3 py-1.5 rounded-sm transition-colors duration-150 cursor-pointer ${
                                 isActive
-                                    ? "bg-[var(--tiffany-glow)] border border-[var(--border-glow)]"
-                                    : "hover:bg-[var(--border-subtle)] border border-transparent"
-                            } ${isRenaming ? "cursor-text" : "cursor-pointer"}`}
+                                    ? "bg-[var(--bg-surface)] border-l-[3px] border-l-[var(--tiffany)] shadow-sm"
+                                    : "border-l-[3px] border-l-transparent hover:bg-[var(--bg-surface)]"
+                            } ${isRenaming ? "cursor-text" : ""}`}
                         >
                             {/* Title */}
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
                                 {isRenaming ? (
                                     <input
                                         ref={renameInputRef}
@@ -424,11 +425,11 @@ export function ConversationList() {
                                         onKeyDown={handleRenameKeyDown}
                                         onBlur={commitRename}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="flex-1 text-[0.8rem] font-medium bg-transparent border-b border-[var(--border-glow)] text-[var(--text-primary)] outline-none min-w-0"
+                                        className="flex-1 text-[12px] font-medium bg-transparent border-b border-[var(--tiffany)] text-[var(--text-primary)] outline-none min-w-0 py-0"
                                     />
                                 ) : (
                                     <span
-                                        className="text-[0.8rem] font-medium text-[var(--text-primary)] truncate flex-1 leading-tight"
+                                        className="text-[12px] font-medium text-[var(--text-primary)] truncate flex-1 leading-snug"
                                         onDoubleClick={(e) => {
                                             e.stopPropagation();
                                             startRename(conv);
@@ -441,40 +442,37 @@ export function ConversationList() {
 
                                 {/* Action buttons (visible on hover) */}
                                 {!isRenaming && (
-                                    <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-                                        {/* Rename button */}
+                                    <div className="hidden group-hover:flex items-center gap-px shrink-0">
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 startRename(conv);
                                             }}
-                                            className="flex items-center justify-center w-5 h-5 rounded text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)] transition-colors"
-                                            title="Rename conversation"
+                                            className="flex items-center justify-center w-4 h-4 rounded-sm text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors"
+                                            title="Rename"
                                         >
                                             <EditIcon />
                                         </button>
 
-                                        {/* Open folder button */}
                                         {conv.sessionId && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleOpenFolder(conv);
                                                 }}
-                                                className="flex items-center justify-center w-5 h-5 rounded text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)] transition-colors"
-                                                title="Open session folder"
+                                                className="flex items-center justify-center w-4 h-4 rounded-sm text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors"
+                                                title="Open folder"
                                             >
                                                 <FolderIcon />
                                             </button>
                                         )}
 
-                                        {/* Delete button */}
                                         <button
                                             onClick={(e) =>
                                                 handleDelete(e, conv)
                                             }
-                                            className="flex items-center justify-center w-5 h-5 rounded text-[var(--text-dim)] hover:text-red-400 hover:bg-red-50 transition-colors"
-                                            title="Delete conversation"
+                                            className="flex items-center justify-center w-4 h-4 rounded-sm text-[var(--text-dim)] hover:text-red-500 hover:bg-red-50 transition-colors"
+                                            title="Delete"
                                         >
                                             <TrashIcon />
                                         </button>
@@ -483,9 +481,9 @@ export function ConversationList() {
                             </div>
 
                             {/* Meta */}
-                            <div className="flex items-center gap-2 text-[0.65rem] text-[var(--text-dim)]">
+                            <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-dim)]">
                                 <span>{agentName(conv.agentSlug)}</span>
-                                <span className="opacity-50">·</span>
+                                <span className="opacity-40">·</span>
                                 <span>{relativeTime(conv.updatedAt)}</span>
                             </div>
                         </div>

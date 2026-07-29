@@ -84,24 +84,22 @@ export function Chat() {
     }
 
     return (
-        <main className="flex h-screen">
+        <main className="flex h-screen bg-[var(--bg-canvas)]">
             {/* ---- Sidebar ---- */}
             <ConversationList />
 
-            {/* ---- Chat Area ---- */}
+            {/* ---- Workspace (Chat Area) ---- */}
             <div className="flex-1 flex flex-col h-screen min-w-0">
-                {/* Header */}
-                <header className="flex items-center gap-3 py-4 px-6 border-b border-[var(--border-subtle)] shrink-0">
-                    <div className="flex items-center gap-2.5 ml-1">
-                        {IconComponent && <IconComponent size={28} />}
-                        <div>
-                            <h2 className="text-[0.95rem] font-bold text-[var(--text-primary)] m-0 leading-tight">
-                                {agent.name}
-                            </h2>
-                            <p className="text-[0.7rem] text-[var(--text-dim)] m-0">
-                                {agent.cliName}
-                            </p>
-                        </div>
+                {/* Tool options bar — Photoshop style */}
+                <header className="flex items-center gap-3 px-4 py-2 border-b border-[var(--border-panel)] bg-[var(--bg-surface)] shrink-0">
+                    <div className="flex items-center gap-2">
+                        {IconComponent && <IconComponent size={18} />}
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                            {agent.name}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-dim)] bg-[var(--bg-panel)] px-1.5 py-0.5 rounded-sm font-mono">
+                            {agent.cliName}
+                        </span>
                     </div>
                 </header>
 
@@ -113,20 +111,19 @@ export function Chat() {
                     />
                 )}
                 {!conversationId && (
-                    <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6">
-                        <ChatIcon />
+                    <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 bg-[var(--bg-canvas)]">
+                        <div className="text-[var(--text-dim)] opacity-40">
+                            <ChatIcon />
+                        </div>
                         <div className="text-center">
-                            <h3 className="text-[0.95rem] font-semibold text-[var(--text-primary)] m-0 mb-1">
-                                No conversation selected
-                            </h3>
-                            <p className="text-[0.8rem] text-[var(--text-dim)] m-0 leading-relaxed">
+                            <p className="text-[12px] text-[var(--text-dim)] m-0 leading-relaxed">
                                 Select a conversation from the sidebar
                                 <br />
                                 or start a new one.
                             </p>
                         </div>
                         <button
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[0.8rem] font-medium text-[var(--text-primary)] bg-[var(--tiffany-glow)] border border-[var(--border-glow)] hover:brightness-110 transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[11px] font-medium text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-panel)] hover:border-[var(--tiffany)] hover:bg-[var(--bg-hover)] transition-colors"
                             onClick={handleNewConversation}
                         >
                             <PlusIcon />

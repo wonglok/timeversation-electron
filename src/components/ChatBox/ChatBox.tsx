@@ -693,11 +693,11 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
     // ---- Render ----
 
     return (
-        <div className="flex-1 flex flex-col min-w-0 overflow-scroll">
-            {/* Messages */}
+        <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)]">
+            {/* Messages — central canvas */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto py-6 flex flex-col gap-4 max-w-[720px] mx-auto w-full px-4"
+                className="flex-1 overflow-y-auto py-4 flex flex-col gap-3 max-w-[760px] mx-auto w-full px-6"
             >
                 {bubbles.length === 0 && (
                     <EmptyChat
@@ -707,7 +707,7 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 )}
 
                 {groupBubbles(bubbles).map((group) => (
-                    <div key={group.id} className="flex flex-col gap-1.5">
+                    <div key={group.id} className="flex flex-col gap-1">
                         {group.bubbles.map((b) => (
                             <AcpBubble key={b.id} bubble={b} />
                         ))}
@@ -724,33 +724,35 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 {sending && <LoadingBubble />}
             </div>
 
-            {/* Input */}
-            <div className="flex items-end gap-2 py-4 px-6 border-t border-[var(--border-subtle)] shrink-0 max-w-[720px] mx-auto w-full">
-                <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={`Message ${agentName}...`}
-                    disabled={sending}
-                    rows={1}
-                    className="input-field flex-1 resize-none max-h-32"
-                />
-                {sending ? (
-                    <button
-                        className="btn-primary !px-4 !py-2 bg-red-500 hover:bg-red-600"
-                        onClick={handleStop}
-                    >
-                        Stop
-                    </button>
-                ) : (
-                    <button
-                        className="btn-primary !px-4 !py-2"
-                        onClick={handleSend}
-                        disabled={!input.trim()}
-                    >
-                        Send
-                    </button>
-                )}
+            {/* Input bar — Photoshop control strip */}
+            <div className="flex items-end gap-2 py-2.5 px-4 border-t border-[var(--border-panel)] bg-[var(--bg-surface)] shrink-0">
+                <div className="flex-1 max-w-[760px] mx-auto w-full flex items-end gap-2">
+                    <textarea
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={`Message ${agentName}...`}
+                        disabled={sending}
+                        rows={1}
+                        className="flex-1 resize-none max-h-32 px-3 py-1.5 text-[13px] font-sans text-[var(--text-primary)] bg-[var(--bg-canvas)] border border-[var(--border-panel)] rounded-sm outline-none transition-colors focus:border-[var(--tiffany)] focus:bg-white placeholder:text-[var(--text-dim)]"
+                    />
+                    {sending ? (
+                        <button
+                            className="px-3 py-1.5 text-[11px] font-semibold text-white bg-red-500 hover:bg-red-600 rounded-sm transition-colors shrink-0"
+                            onClick={handleStop}
+                        >
+                            Stop
+                        </button>
+                    ) : (
+                        <button
+                            className="px-3 py-1.5 text-[11px] font-semibold text-white bg-[var(--tiffany)] hover:bg-[var(--tiffany-deep)] rounded-sm transition-colors shrink-0 disabled:opacity-30 disabled:cursor-default"
+                            onClick={handleSend}
+                            disabled={!input.trim()}
+                        >
+                            Send
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

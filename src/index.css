@@ -2,32 +2,46 @@
 @import "@dannymichel/proxima-nova";
 
 :root {
+    /* Tiffany accent scale */
     --tiffany: #81D8D0;
-    --tiffany-deep: #5BBFB7;
+    --tiffany-deep: #5AB8B0;
     --tiffany-soft: #B8E8E3;
-    --tiffany-glow: rgba(129, 216, 208, 0.25);
+    --tiffany-glow: rgba(129, 216, 208, 0.18);
 
     --primary: #81D8D0;
     --primary-glow: #B8E8E3;
     --accent: #6BA5C4;
     --accent-glow: #96C8E2;
     --success: #7BB8A0;
-    --bg-deep: #F3F8FA;
-    --bg-surface: #FFFFFF;
-    --bg-card: rgba(255, 255, 255, 0.78);
-    --border-subtle: rgba(129, 216, 208, 0.15);
-    --border-glow: rgba(129, 216, 208, 0.30);
-    --text-primary: #1B2D3B;
+
+    /* Photoshop panel surface hierarchy */
+    --bg-canvas: #F2F5F5;       /* workspace — the empty canvas */
+    --bg-panel: #E9EDED;        /* panel surface — sidebar, tool panels */
+    --bg-surface: #FFFFFF;      /* content cards, messages */
+    --bg-card: #FFFFFF;         /* cards (solid, not glass) */
+    --bg-hover: rgba(129, 216, 208, 0.06);
+
+    /* Panel borders — sharp, structured */
+    --border-panel: #D5DEDE;
+    --border-subtle: #E2E8E8;
+    --border-glow: rgba(129, 216, 208, 0.35);
+    --border-active: var(--tiffany);
+
+    /* Text */
+    --text-primary: #2C3A42;
     --text-secondary: #5C7A8A;
-    --text-dim: #8CAAB8;
-    --radius: 14px;
+    --text-dim: #8A9DA8;
+
+    --radius: 6px;
+    --radius-panel: 4px;
     --transition-easing: cubic-bezier(0.22, 0.61, 0.36, 1);
 
-    font-family: "Proxima Nova", Inter, system-ui, sans-serif;
-    line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Proxima Nova", Inter, system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
     font-weight: 400;
     color-scheme: light;
-    background-color: var(--bg-deep);
+    background-color: var(--bg-canvas);
     color: var(--text-primary);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -35,13 +49,14 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* ---- Tiffany Dream Atmosphere ---- */
+/* ---- Photoshop Workspace Atmosphere ---- */
 body {
     margin: 0;
     display: flex;
     min-width: 320px;
     min-height: 100vh;
     overscroll-behavior-x: none;
+    background: var(--bg-canvas);
 }
 
 body::before {
@@ -51,76 +66,68 @@ body::before {
     z-index: 0;
     pointer-events: none;
     background:
-        radial-gradient(ellipse 900px 600px at 30% 15%, rgba(129, 216, 208, 0.12), transparent),
-        radial-gradient(ellipse 600px 500px at 70% 45%, rgba(107, 165, 196, 0.08), transparent),
-        radial-gradient(ellipse 700px 450px at 50% 75%, rgba(129, 216, 208, 0.06), transparent),
-        radial-gradient(ellipse 500px 400px at 85% 85%, rgba(184, 232, 227, 0.10), transparent);
-}
-
-/* Hero bloom — the signature Tiffany glass orb */
-body::after {
-    content: "";
-    position: fixed;
-    top: -20%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 800px;
-    height: 500px;
-    z-index: 0;
-    pointer-events: none;
-    background: radial-gradient(
-        ellipse 60% 50% at 50% 40%,
-        rgba(184, 232, 227, 0.35) 0%,
-        rgba(129, 216, 208, 0.15) 35%,
-        rgba(129, 216, 208, 0.04) 65%,
-        transparent 100%
-    );
-    animation: tiffany-breathe 8s ease-in-out infinite;
-}
-
-@keyframes tiffany-breathe {
-    0%, 100% {
-        opacity: 0.70;
-        transform: translateX(-50%) scale(1);
-    }
-    50% {
-        opacity: 1;
-        transform: translateX(-50%) scale(1.08);
-    }
+        /* Subtle canvas texture — barely visible grid lines */
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(129, 216, 208, 0.015) 2px,
+            rgba(129, 216, 208, 0.015) 3px
+        ),
+        /* Single soft accent bloom (replaces multi-orb dreamy effect) */
+        radial-gradient(
+            ellipse 800px 400px at 50% 30%,
+            rgba(129, 216, 208, 0.06) 0%,
+            transparent 100%
+        );
 }
 
 #root {
     position: relative;
     z-index: 1;
     width: 100%;
+    height: 100vh;
 }
 
 /* ---- Typography ---- */
 h1, h2, h3 {
-    font-family: "Proxima Nova", Inter, system-ui, sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Proxima Nova", Inter, system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
 }
 
-/* ---- Glass Card ---- */
+/* ---- Photoshop Panel ---- */
+.ps-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-panel);
+    border-radius: var(--radius-panel);
+}
+
+.ps-panel-header {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    user-select: none;
+}
+
+/* ---- Card (solid, structured — no glass blur) ---- */
 .glass-card {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius);
-    backdrop-filter: blur(28px);
-    box-shadow:
-        0 1px 3px rgba(129, 216, 208, 0.04),
-        0 4px 16px rgba(129, 216, 208, 0.04);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .glass-card:hover {
     border-color: var(--border-glow);
-    box-shadow:
-        0 1px 3px rgba(129, 216, 208, 0.06),
-        0 8px 32px rgba(129, 216, 208, 0.08);
+    box-shadow: 0 1px 4px rgba(129, 216, 208, 0.08);
     transition:
-        border-color 0.4s var(--transition-easing),
-        box-shadow 0.4s var(--transition-easing);
+        border-color 0.2s var(--transition-easing),
+        box-shadow 0.2s var(--transition-easing);
 }
 
 /* ---- Primary Button ---- */
