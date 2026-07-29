@@ -8,13 +8,15 @@ import type { ComponentType } from "react";
 import ClaudeCodeColor from "@lobehub/icons/es/ClaudeCode/components/Color";
 import CodexColor from "@lobehub/icons/es/Codex/components/Color";
 import QwenColor from "@lobehub/icons/es/Qwen/components/Color";
-import KimiColor from "@lobehub/icons/es/Kimi/components/Color";
 // import GeminiCLIColor from "@lobehub/icons/es/GeminiCLI/components/Color";
 
 // Monochrome brand icons (no Color variant in package)
 import OpenCodeIcon from "@lobehub/icons/es/OpenCode";
 import PiIcon from "@lobehub/icons/es/Pi";
 import CursorIcon from "@lobehub/icons/es/Cursor";
+
+// Custom SVG icons
+import { KimiIcon } from "./icons/KimiIcon";
 // import ClineIcon from "@lobehub/icons/es/Cline";
 // import GithubCopilotIcon from "@lobehub/icons/es/GithubCopilot";
 // import KiloCodeIcon from "@lobehub/icons/es/KiloCode";
@@ -124,8 +126,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Moonshot AI's Kimi-powered coding agent",
         homepage: "https://github.com/MoonshotAI/kimi-code",
-        icon: KimiColor,
-        iconBg: "dark",
+        icon: KimiIcon,
     },
 
     {
