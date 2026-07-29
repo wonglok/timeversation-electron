@@ -37,11 +37,9 @@ function writeSSEEvent(
         // Empty data — emit a single empty data line
         parts.push(encodeLine("data", ""));
     } else {
-        // Split on \n so each physical line gets its own `data:` prefix.
-        // encodeLine already appends \r\n as the line terminator, so we
-        // must NOT append an extra \n here.
+        // Split on \n so each physical line gets its own `data:` prefix
         for (const line of data.split("\n")) {
-            parts.push(encodeLine("data", line));
+            parts.push(encodeLine("data", `${line}\n`));
         }
     }
 
@@ -144,33 +142,29 @@ export const handlePIAgentSession = async ({
     let assistantText = "";
 
     // --- CLI args ---
-    // --print: non-interactive, process prompt and exit
-    // --continue (-c): resume previous session
-    // --session-dir: isolate session storage per conversation so --continue
-    //                picks up the right conversation context.
+    // --continue resumes the conversation in this project directory.
+    // Since we use a per-conversation cwd, Claude Code maintains isolated
+    // session state for each conversation automatically.
     const args = [
-        "--print",
-        "-c",
-        "--session-dir",
-        sessionPath,
+        //
         JSON.stringify(message),
+        "--print",
+        "--continue",
     ];
 
-    // --- Spawn pi process ---
+    // --- Spawn claude process ---
     const proc = spawn("pi", args, {
         env: process.env,
         cwd: sessionPath,
-        stdio: ["pipe", "pipe", "ignore"],
+        stdio: ["ignore", "pipe", "pipe"],
     });
 
     // --- UTF-8 decoders ---
     const stdoutDecoder = new TextDecoder();
     const stderrDecoder = new TextDecoder();
 
-    // Use objects so mutations inside pipeChunk/flushDecoder propagate
-    // back to the caller (strings are copied by value, objects are shared).
-    const stdoutBuf = { buf: "" };
-    const stderrBuf = { buf: "" };
+    let stdoutBuf = "";
+    let stderrBuf = "";
 
     function pipeChunk(
         raw: Buffer,
@@ -203,7 +197,7 @@ export const handlePIAgentSession = async ({
 
     // --- stdout → SSE ---
     proc.stdout.on("data", (raw: Buffer) => {
-        pipeChunk(raw, stdoutDecoder, stdoutBuf, (line) => {
+        pipeChunk(raw, stdoutDecoder, { buf: stdoutBuf }, (line) => {
             // Collect text from assistant message blocks for thread persistence
             try {
                 const parsed = JSON.parse(line);
@@ -224,33 +218,37 @@ export const handlePIAgentSession = async ({
         });
     });
 
-    // // --- stderr → SSE named events ---
-    // proc.stderr.on("data", (raw: Buffer) => {
-    //     pipeChunk(raw, stderrDecoder, stderrBuf, (line) =>
-    //         writeSSEEvent(res, line, "stderr"),
-    //     );
-    // });
+    // --- stderr → SSE named events ---
+    proc.stderr.on("data", (raw: Buffer) => {
+        pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
+            writeSSEEvent(res, line, "stderr"),
+        );
+    });
 
-    // // --- Process spawn error ---
-    // proc.on("error", (err) => {
-    //     writeSSEEvent(res, err.message, "error");
-    //     res.end();
-    // });
+    // --- Process spawn error ---
+    proc.on("error", (err) => {
+        writeSSEEvent(res, err.message, "error");
+        res.end();
+    });
 
-    // // --- Client disconnect → kill process ---
-    // req.on("close", () => {
-    //     if (proc.exitCode === null && !proc.killed) {
-    //         proc.kill();
-    //     }
-    // });
+    // --- Client disconnect → kill process ---
+    req.on("close", () => {
+        if (proc.exitCode === null && !proc.killed) {
+            proc.kill();
+        }
+    });
 
     // --- Process complete ---
     proc.on("close", async (code, signal) => {
         // Flush any trailing bytes
-        flushDecoder(stdoutDecoder, stdoutBuf, writeSSEEvent.bind(null, res));
+        flushDecoder(
+            stdoutDecoder,
+            { buf: stdoutBuf },
+            writeSSEEvent.bind(null, res),
+        );
         flushDecoder(
             stderrDecoder,
-            stderrBuf,
+            { buf: stderrBuf },
             writeSSEEvent.bind(null, res),
             "stderr",
         );
