@@ -68,17 +68,40 @@ export function Menu() {
     const installedCount = Object.values(installed).filter(Boolean).length;
 
     return (
-        <main className="flex flex-col items-center px-6 pt-20 pb-16 min-h-screen bg-[var(--bg-canvas)]">
+        <main className="flex flex-col items-center px-6 pt-12 pb-16 min-h-screen bg-[var(--bg-canvas)]">
+            {/* ---- Back link ---- */}
+            <div className="w-full max-w-[680px] mb-6">
+                <button
+                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] transition-colors"
+                    onClick={() => navigate("/")}
+                >
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                    Back
+                </button>
+            </div>
+
             {/* ---- Hero ---- */}
             <section className="flex flex-col items-center text-center max-w-[560px] gap-3">
                 {/* Title */}
                 <h1 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--text-primary)] m-0">
-                    Timeversation
+                    Pick an Agent
                 </h1>
 
                 {/* Subtitle */}
                 <p className="text-[13px] text-[var(--text-dim)] leading-relaxed max-w-[380px] m-0">
-                    Conversations that create working hours.
+                    Timeversation can resue locally installed agent, so that you
+                    dont have to buy a new plan.
                 </p>
             </section>
 

@@ -279,7 +279,7 @@ function CircleDotIcon() {
 // Component
 // ============================================================================
 
-export function Setup() {
+export function SetupLLM() {
     // --- State ---
     const [models, setModels] = useState<ModelsList | null>(null);
     const [repo, setRepo] = useState("hf:giladgd/gemma-4-E2B-it-GGUF:Q6_K");

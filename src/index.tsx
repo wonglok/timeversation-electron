@@ -6,7 +6,7 @@ import { Chat } from "./pages/Chat.tsx";
 import "./index.css";
 import "@fontsource-variable/inter/opsz-italic.css";
 import { Home } from "./pages/Home.tsx";
-import { Setup } from "./pages/Setup.tsx";
+import { SetupLLM } from "./pages/SetupLLM.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <>
@@ -15,7 +15,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route path="/" element={<Home />} />
                 <Route path="/menu" element={<Menu />} />
                 <Route path="/chat/:slug/:conversationId?" element={<Chat />} />
-                <Route path="/setup" element={<Setup />} />
+
+                {/* Setup llm */}
+                <Route path="/setup" element={<SetupLLM />} />
             </Routes>
         </HashRouter>
     </>,
@@ -30,3 +32,5 @@ React.StrictMode
 window.ipcRenderer.on("main-process-message", (_event, message) => {
     console.log(message);
 });
+
+//
