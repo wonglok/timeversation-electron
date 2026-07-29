@@ -360,9 +360,20 @@ export function ConversationList() {
             <div className="px-3 py-2 border-b border-[var(--border-panel)]">
                 <button
                     className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors"
-                    onClick={() => navigate("/")}
+                    onClick={() => {
+                        window.history.go(-1);
+                    }}
                 >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
                         <path d="M19 12H5M12 19l-7-7 7-7" />
                     </svg>
                     Home

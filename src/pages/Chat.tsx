@@ -64,7 +64,12 @@ export function Chat() {
         return (
             <main className="flex flex-col items-center justify-center min-h-screen gap-4">
                 <p className="text-[var(--text-secondary)]">Agent not found.</p>
-                <button className="btn-secondary" onClick={() => navigate("/")}>
+                <button
+                    className="btn-secondary"
+                    onClick={() => {
+                        navigate("/");
+                    }}
+                >
                     Back to Home
                 </button>
             </main>

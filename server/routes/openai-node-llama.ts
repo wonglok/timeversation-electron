@@ -251,6 +251,75 @@ export async function createOpenAiNodeLlamaRouter({
     });
 
     // ------------------------------------------------------------------
+    // POST /models/load — explicitly load a model by filename
+    // ------------------------------------------------------------------
+
+    router.post("/models/load", async (req, res) => {
+        const { filename } = req.body as { filename?: string };
+
+        if (!filename) {
+            res.status(400).json({ error: "filename is required" });
+            return;
+        }
+
+        // Only allow a plain filename — strip any directory components
+        const safeName = path.basename(filename);
+        if (!safeName.endsWith(".gguf")) {
+            res.status(400).json({
+                error: "filename must be a .gguf file",
+            });
+            return;
+        }
+
+        const modelPath = path.join(resolvedModelsDir, safeName);
+        if (!fs.existsSync(modelPath)) {
+            res.status(404).json({
+                error: `Model not found: ${safeName}`,
+            });
+            return;
+        }
+
+        try {
+            // Dispose previous state
+            if (state) {
+                try {
+                    state.context.dispose();
+                } catch {
+                    /* ignore */
+                }
+            }
+
+            const llama = await getLlama();
+            const model = await llama.loadModel({ modelPath });
+            const contextSize = Number(process.env.LLM_CONTEXT_SIZE) || 8192;
+            const context = await model.createContext({ contextSize });
+            const sequence = context.getSequence();
+
+            const config: OpenAIMockConfig = {
+                model,
+                context,
+                contextSequence: sequence,
+                modelName: path.basename(modelPath, ".gguf"),
+                systemPrompt:
+                    "You are a helpful assistant. Keep responses clear and concise.",
+            };
+
+            const client = new OpenAIMock(config);
+            state = { model, context, sequence, client, modelPath };
+            currentModelPath = modelPath;
+
+            res.json({
+                ok: true,
+                modelName: safeName,
+                path: modelPath,
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            res.status(500).json({ error: { message } });
+        }
+    });
+
+    // ------------------------------------------------------------------
     // POST /models/check — check model compatibility with current system
     // ------------------------------------------------------------------
 

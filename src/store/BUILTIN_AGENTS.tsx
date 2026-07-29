@@ -140,6 +140,19 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         icon: OpenCodeIcon,
     },
 
+    {
+        name: "Timeversation Agent",
+        slug: "local",
+        cliName: "local",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Local AI Agent",
+        homepage: "https://github.com/wonglok/timeversation",
+        icon: function Icon() {
+            return <>Local</>;
+        },
+    },
+
     // {
     //     name: "Qwen Code",
     //     slug: "qwen-code",

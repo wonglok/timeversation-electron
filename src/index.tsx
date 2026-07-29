@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Routes, Route } from "react-router-dom";
-import { Menu } from "./pages/Menu.tsx";
+import { AgentMenu } from "./pages/AgentMenu.tsx";
 import { Chat } from "./pages/Chat.tsx";
 import "./index.css";
 import "@fontsource-variable/inter/opsz-italic.css";
@@ -13,7 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <HashRouter>
             <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/menu" element={<Menu />} />
+                <Route path="/menu" element={<AgentMenu />} />
                 <Route path="/chat/:slug/:conversationId?" element={<Chat />} />
 
                 {/* Setup llm */}

@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 // ============================================================================
 // Constants
@@ -280,6 +280,8 @@ function CircleDotIcon() {
 // ============================================================================
 
 export function SetupLLM() {
+    const navigate = useNavigate();
+
     // --- State ---
     const [models, setModels] = useState<ModelsList | null>(null);
     const [repo, setRepo] = useState("hf:giladgd/gemma-4-E2B-it-GGUF:Q6_K");
@@ -291,6 +293,7 @@ export function SetupLLM() {
     } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [checkingModel, setCheckingModel] = useState<string | null>(null);
+    const [loadingModel, setLoadingModel] = useState<string | null>(null);
     const [modelCompat, setModelCompat] = useState<
         Record<string, ModelCompatInfo>
     >({});
@@ -496,6 +499,39 @@ export function SetupLLM() {
         }
     }, []);
 
+    // --- Load model and navigate to chat ---
+    const loadModel = useCallback(
+        async (modelPath: string) => {
+            setLoadingModel(modelPath);
+            try {
+                const res = await fetch(`${API_BASE}/api/llm/models/load`, {
+                    method: "POST",
+                    mode: "cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: modelPath.split("/").pop(),
+                    }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(
+                        (err as { error?: string }).error ||
+                            "Failed to load model",
+                    );
+                }
+                await fetchModels();
+                navigate("/chat/local");
+            } catch (err) {
+                setError(
+                    err instanceof Error ? err.message : "Failed to load model",
+                );
+            } finally {
+                setLoadingModel(null);
+            }
+        },
+        [fetchModels, navigate],
+    );
+
     // --- Select preset ---
     const selectPreset = (presetRepo: string) => {
         setRepo(presetRepo);
@@ -506,6 +542,7 @@ export function SetupLLM() {
     const loadedModelName = models?.loaded
         ? (models.files.find((f) => f.path === models.loaded)?.name ?? null)
         : null;
+
     const hasModels = (models?.files.length ?? 0) > 0;
 
     // ==================================================================
@@ -517,7 +554,7 @@ export function SetupLLM() {
             {/* ---- Back link ---- */}
             <div className="w-full max-w-[680px] mb-6">
                 <Link
-                    to="/"
+                    to="/menu"
                     className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] transition-colors"
                 >
                     <ArrowLeftIcon />
@@ -788,23 +825,6 @@ export function SetupLLM() {
                 </section>
             )}
 
-            {/* ---- Loaded Model Status ---- */}
-            {models && loadedModelName && (
-                <section className="w-full max-w-[680px] mb-6">
-                    <div className="flex items-center gap-2 px-4 py-3 rounded-sm bg-[var(--bg-surface)] border border-[var(--tiffany-soft)]">
-                        <span className="text-[var(--tiffany)]">
-                            <CircleDotIcon />
-                        </span>
-                        <span className="text-[12px] text-[var(--text-secondary)]">
-                            Currently loaded:
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                            {loadedModelName}
-                        </span>
-                    </div>
-                </section>
-            )}
-
             {/* ---- Downloaded Models List ---- */}
             <section className="w-full max-w-[680px]">
                 <div className="glass-card">
@@ -941,6 +961,35 @@ export function SetupLLM() {
                                                 )}
                                                 Check
                                             </button>
+                                            {/* Load model */}
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-medium text-[var(--tiffany-deep)] hover:text-white hover:bg-[var(--tiffany)] transition-colors disabled:opacity-40"
+                                                onClick={() =>
+                                                    loadModel(file.path)
+                                                }
+                                                disabled={
+                                                    loadingModel === file.path
+                                                }
+                                            >
+                                                {loadingModel === file.path ? (
+                                                    <LoaderIcon />
+                                                ) : (
+                                                    <svg
+                                                        width="12"
+                                                        height="12"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth={2}
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    >
+                                                        <path d="M5 12h14M12 5l7 7-7 7" />
+                                                    </svg>
+                                                )}
+                                                Load
+                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -951,11 +1000,50 @@ export function SetupLLM() {
             </section>
 
             {/* ---- Footer tip ---- */}
-            <p className="mt-8 text-[10px] text-[var(--text-dim)] text-center max-w-[400px] leading-relaxed">
+            <p className="my-8 text-[10px] text-[var(--text-dim)] text-center max-w-[400px] leading-relaxed">
                 Models are downloaded to your app data directory and run locally
                 via node-llama-cpp. Larger models require more RAM and disk
                 space.
             </p>
+
+            {/* ---- Loaded Model Status ---- */}
+            {models && loadedModelName && (
+                <section className="w-full max-w-[680px] mb-6">
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-sm bg-[var(--bg-surface)] border border-[var(--tiffany-soft)]">
+                        <span className="text-[var(--tiffany)]">
+                            <CircleDotIcon />
+                        </span>
+                        <span className="text-[12px] text-[var(--text-secondary)]">
+                            Currently loaded:
+                        </span>
+                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                            {loadedModelName}
+                        </span>
+                    </div>
+                </section>
+            )}
+
+            {/* ---- CTA: Continue to chat ---- */}
+            {loadedModelName && (
+                <button
+                    className="btn-primary text-[13px] px-6 py-2.5 mt-6 gap-2"
+                    onClick={() => navigate("/chat/local")}
+                >
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Continue to Chat
+                </button>
+            )}
         </main>
     );
 }

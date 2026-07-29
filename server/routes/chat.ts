@@ -8,6 +8,7 @@ import { BrowserWindow } from "electron";
 import { handleCodexSDK } from "../agnets/handleCodexSDK";
 import { handleClaudeSession } from "../agnets/handleClaudeSession";
 import { handleKimiCodeSession } from "../agnets/handleKimiCodeSession";
+import { handleLocalSDK } from "../agnets/handleLocalSDK";
 
 export const createChatRouter = async ({
     win,
@@ -78,6 +79,14 @@ export const createChatRouter = async ({
             });
         } else if (message && slug === "openai-codex-sdk") {
             handleCodexSDK({
+                workspacePath,
+                req,
+                res,
+                message,
+                conversationId: req.body.conversationId,
+            });
+        } else if (message && slug === "local") {
+            handleLocalSDK({
                 workspacePath,
                 req,
                 res,
