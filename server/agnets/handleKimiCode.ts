@@ -171,10 +171,11 @@ export const handleKimiCode = async ({
         try {
             const init: any = await ctx.request(methods.agent.initialize, {
                 protocolVersion: 1,
-                clientCapabilities: {},
-                agentCapabilities: {
-                    terminal: true,
+                clientCapabilities: {
                     fs: { writeTextFile: true, readTextFile: true },
+                    terminal: true,
+                },
+                agentCapabilities: {
                     sessionCapabilities: {
                         list: {},
                         loadSession: true,

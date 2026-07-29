@@ -460,6 +460,33 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
             return;
         }
 
+        // --- Kimi Code format ---
+        // Kimi outputs { "role": "assistant", "content": "..." } in text
+        // mode, and the same role-based format in stream-json mode for the
+        // final response object.
+        if (parsed.role) {
+            switch (parsed.role) {
+                case "assistant":
+                    if (typeof parsed.content === "string" && parsed.content) {
+                        appendBubble("text", { text: parsed.content });
+                    }
+                    break;
+                case "user":
+                    // User messages are already shown from local state; ignore.
+                    break;
+                case "system":
+                case "tool":
+                    if (typeof parsed.content === "string" && parsed.content) {
+                        appendBubble("system", {
+                            systemSubtype: "tool",
+                            systemDetail: parsed.content,
+                        });
+                    }
+                    break;
+            }
+            return;
+        }
+
         // --- Claude Code stream-json format ---
         if (!parsed.type) {
             appendBubble("text", { text: line });
