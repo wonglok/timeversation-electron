@@ -25,3 +25,7 @@ must use svg for icon
 # Planning
 
 must plan properly before exection
+
+#
+
+WE MUST NOT OUTPUT \*.d.ts
