@@ -40,6 +40,24 @@ function InstalledDot() {
     );
 }
 
+function LoaderIcon() {
+    return (
+        <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="animate-spin text-[var(--text-dim)]"
+        >
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        </svg>
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -47,8 +65,10 @@ function InstalledDot() {
 export function AgentMenu() {
     const navigate = useNavigate();
     const [installed, setInstalled] = useState<Record<string, boolean>>({});
+    const [checking, setChecking] = useState(true);
 
     useEffect(() => {
+        setChecking(true);
         const payload = getAgentDetectionPayload();
         fetch(`${API_BASE}/api/agents/detect`, {
             method: "POST",
@@ -62,6 +82,9 @@ export function AgentMenu() {
             })
             .catch(() => {
                 // Server not available — no dots shown
+            })
+            .finally(() => {
+                setChecking(false);
             });
     }, []);
 
@@ -112,9 +135,13 @@ export function AgentMenu() {
                     <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)]">
                         Available agents
                     </span>
-                    <span className="text-[10px] text-[var(--text-dim)] tabular-nums">
-                        {installedCount}/{BUILTIN_AGENTS.length} installed
-                    </span>
+                    {checking ? (
+                        <LoaderIcon />
+                    ) : (
+                        <span className="text-[10px] text-[var(--text-dim)] tabular-nums">
+                            {installedCount}/{BUILTIN_AGENTS.filter((r) => r.slug !== "local").length} installed
+                        </span>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 w-full">
@@ -151,20 +178,39 @@ export function AgentMenu() {
                                               : "bg-[var(--bg-panel)] border-transparent cursor-default opacity-60"
                                     }`}
                                 >
-                                    {/* Installed indicator */}
-                                    {isInstalled && (
+                                    {/* Status indicator */}
+                                    {checking ? (
+                                        <span
+                                            className="absolute top-2 right-2"
+                                            title="Checking..."
+                                        >
+                                            <svg
+                                                width="12"
+                                                height="12"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth={2}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                className="animate-spin text-[var(--text-dim)]"
+                                            >
+                                                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                            </svg>
+                                        </span>
+                                    ) : isInstalled ? (
                                         <span
                                             className="absolute top-2 right-2 text-[var(--tiffany)]"
                                             title="Installed"
                                         >
                                             <InstalledDot />
                                         </span>
-                                    )}
+                                    ) : null}
 
                                     {/* Icon */}
                                     {IconComponent ? (
                                         <IconComponent
-                                            size={isInstalled ? 36 : 32}
+                                            size={isInstalled && !checking ? 36 : 32}
                                         />
                                     ) : (
                                         <div className="w-9 h-9 rounded-sm bg-[var(--border-subtle)]" />
