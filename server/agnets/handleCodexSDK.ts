@@ -101,7 +101,11 @@ export const handleCodexSDK = async ({
     // --- Resolve thread: resume from stored sessionId or start fresh ---
     const codex = new Codex({
         config: {
-            sandboxed: false,
+            sandboxed: {
+                mode: "workspace-write",
+                network_access: true,
+                allowed_commands: ["open"],
+            },
             skipGitRepoCheck: true,
             approvalPolicy: "never",
         },
