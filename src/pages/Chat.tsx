@@ -110,6 +110,7 @@ export function Chat() {
                         agentName={agent.name}
                     />
                 )}
+
                 {!conversationId && (
                     <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 bg-[var(--bg-canvas)]">
                         <div className="text-[var(--text-dim)] opacity-40">

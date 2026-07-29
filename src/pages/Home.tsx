@@ -65,8 +65,7 @@ export function Home() {
             });
     }, []);
 
-    const installedCount =
-        Object.values(installed).filter(Boolean).length;
+    const installedCount = Object.values(installed).filter(Boolean).length;
 
     return (
         <main className="flex flex-col items-center px-6 pt-20 pb-16 min-h-screen bg-[var(--bg-canvas)]">
@@ -112,9 +111,7 @@ export function Home() {
                                 onClick={
                                     isInstalled
                                         ? () => {
-                                              navigate(
-                                                  `/chat/${agent.slug}`,
-                                              );
+                                              navigate(`/chat/${agent.slug}`);
                                           }
                                         : undefined
                                 }
@@ -124,8 +121,8 @@ export function Home() {
                                             ? "bg-[#1E2D3B] border-[#2D404F] cursor-pointer hover:border-[var(--tiffany)] hover:bg-[#233645] hover:shadow-sm"
                                             : "bg-[#1A2733] border-transparent cursor-default opacity-60"
                                         : isInstalled
-                                            ? "bg-[var(--bg-surface)] border-[var(--border-panel)] cursor-pointer hover:border-[var(--tiffany)] hover:shadow-sm"
-                                            : "bg-[var(--bg-panel)] border-transparent cursor-default opacity-60"
+                                          ? "bg-[var(--bg-surface)] border-[var(--border-panel)] cursor-pointer hover:border-[var(--tiffany)] hover:shadow-sm"
+                                          : "bg-[var(--bg-panel)] border-transparent cursor-default opacity-60"
                                 }`}
                             >
                                 {/* Installed indicator */}
