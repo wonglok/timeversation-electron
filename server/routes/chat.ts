@@ -8,7 +8,7 @@ import { BrowserWindow } from "electron";
 import { handleCodexSDK } from "../agnets/handleCodexSDK";
 import { handleClaudeSession } from "../agnets/handleClaudeSession";
 import { handleKimiCodeSession } from "../agnets/handleKimiCodeSession";
-import { handleLocalSDK } from "../agnets/handleLocalSDK";
+import { handleLocalOpenAISDK } from "../agnets/handleLocalOpenAISDK";
 // import { handleLocalAICodex } from "../agnets/handleLocalAICodex";
 
 export const createChatRouter = async ({
@@ -87,7 +87,7 @@ export const createChatRouter = async ({
                 conversationId: req.body.conversationId,
             });
         } else if (message && slug === "local") {
-            handleLocalSDK({
+            handleLocalOpenAISDK({
                 workspacePath,
                 req,
                 res,

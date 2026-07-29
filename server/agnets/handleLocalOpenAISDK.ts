@@ -62,7 +62,7 @@ function writeSSEEvent(
 // Codex SDK handler — uses @openai/codex-sdk to stream agent replies via SSE
 // ============================================================================
 
-export const handleLocalSDK = async ({
+export const handleLocalOpenAISDK = async ({
     req,
     res,
     message,
