@@ -55,7 +55,7 @@ function writeSSEEvent(
 // Handler — Agent Client Protocol via stdio
 // ============================================================================
 
-export const handleKimiCode = async ({
+export const handleKimiCodeACP = async ({
     req,
     res,
     message,
@@ -80,7 +80,12 @@ export const handleKimiCode = async ({
     // --- Resolve session directory ---
     const appDataPath = app.getPath("appData");
     const dirSessionId = conversationId || crypto.randomUUID();
-    const sessionPath = path.join(appDataPath, "timeversation", "sessions", dirSessionId);
+    const sessionPath = path.join(
+        appDataPath,
+        "timeversation",
+        "sessions",
+        dirSessionId,
+    );
     try {
         mkdirSync(sessionPath, { recursive: true });
     } catch (_) {

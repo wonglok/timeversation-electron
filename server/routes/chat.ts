@@ -3,7 +3,7 @@ import { Router } from "express";
 import { handleOpenCode } from "../agnets/handleOpenCode";
 // import { handleCodex } from "../agnets/handleCodex";
 import { BrowserWindow } from "electron";
-import { handleKimiCode } from "../agnets/handleKimiCode";
+// import { handleKimiCode } from "../agnets/handleKimiCode";
 // import { handleCodex } from "../agnets/handleCodex";
 import { handleCodexSDK } from "../agnets/handleCodexSDK";
 import { handleClaudeSession } from "../agnets/handleClaudeSession";

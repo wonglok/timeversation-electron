@@ -118,7 +118,12 @@ export const handleKimiCodeSession = async ({
         sessionId = crypto.randomUUID();
     }
 
-    sessionPath = path.join(appDataPath, "timeversation", "sessions", sessionId);
+    sessionPath = path.join(
+        appDataPath,
+        "timeversation",
+        "sessions",
+        sessionId,
+    );
     try {
         mkdirSync(sessionPath, { recursive: true });
     } catch (_) {
