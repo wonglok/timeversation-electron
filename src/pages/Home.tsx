@@ -58,7 +58,7 @@ export function Home() {
             {/* ---- Agent Icons ---- */}
             <section className="flex flex-col items-center gap-6 mt-14 max-w-[720px] w-full reveal-4">
                 <h2 className="text-[0.85rem] font-semibold uppercase tracking-[0.08em] text-[var(--text-dim)] m-0">
-                    SUPPORTED AGENTS
+                    Talk with YOUR AGENTS
                 </h2>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full">
