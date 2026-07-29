@@ -133,7 +133,7 @@ export const handleOpenCode = async ({
         Readable.toWeb(proc.stdout!),
     );
 
-    const app = client({ name: "timeversation" });
+    const acpClient = client({ name: "timeversation" });
 
     // Accumulated assistant text for the current turn — collected from
     // session/update notifications so we can persist it to the thread.
@@ -146,7 +146,7 @@ export const handleOpenCode = async ({
 
     // Forward session/update notifications as raw ACP NDJSON lines and
     // accumulate text chunks for thread persistence.
-    app.onNotification(
+    acpClient.onNotification(
         methods.client.session.update,
         (ctx: ClientHandlerContext<schema.SessionNotification>) => {
             if (!suppressForwarding) {
@@ -163,9 +163,9 @@ export const handleOpenCode = async ({
     );
 
     // Register the connection-scoped handler that drives the full session
-    // lifecycle.  `app.onConnect` + `app.connect` replaces the older
-    // `app.connectWith` callback style.
-    app.onConnect(async (connection: ClientConnection) => {
+    // lifecycle.  `acpClient.onConnect` + `app.connect` replaces the older
+    // `acpClient.connectWith` callback style.
+    acpClient.onConnect(async (connection: ClientConnection) => {
         const ctx = connection.agent;
 
         try {
@@ -341,6 +341,6 @@ export const handleOpenCode = async ({
 
     // Establish the connection — fires the onConnect handler.  Wait for the
     // underlying transport to close before returning control.
-    const connection = app.connect(stream);
+    const connection = acpClient.connect(stream);
     await connection.closed;
 };

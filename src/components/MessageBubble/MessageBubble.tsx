@@ -6,6 +6,9 @@
 //   AcpBubble        — rich ACP bubble dispatcher for Claude Code / Kimi etc.
 // ============================================================================
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 import { useState } from "react";
 import type { SimpleMessage, Bubble, BubbleGroup, AcpUsage } from "./types";
 
@@ -144,7 +147,9 @@ export function TextBubble({ text }: { text: string }) {
     return (
         <div className="flex justify-start">
             <div className="max-w-[85%] px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap glass-card rounded-bl-sm text-[var(--text-primary)]">
-                {text}
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {text}
+                </ReactMarkdown>
             </div>
         </div>
     );

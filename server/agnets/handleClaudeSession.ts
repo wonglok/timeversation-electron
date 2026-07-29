@@ -167,7 +167,7 @@ export const handleClaudeSession = async ({
 
     function pipeChunk(
         raw: Buffer,
-        decoder: TextDecoder,
+        decoder: InstanceType<typeof TextDecoder>,
         bufRef: { buf: string },
         writeLine: (line: string) => void,
     ) {
@@ -181,7 +181,7 @@ export const handleClaudeSession = async ({
     }
 
     function flushDecoder(
-        decoder: TextDecoder,
+        decoder: InstanceType<typeof TextDecoder>,
         bufRef: { buf: string },
         writeSSE: (data: string, event?: string) => void,
         event?: string,
