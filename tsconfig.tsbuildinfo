@@ -1,1 +1,0 @@
-{"root":["./src/index.tsx","./src/vite-env.d.ts","./src/api/heartbeat.ts","./src/components/icons.tsx","./src/pages/agents.tsx","./src/pages/chat.tsx","./src/pages/home.tsx","./src/store/agents.ts","./src/store/chat.ts","./electron/electron-env.d.ts","./electron/index.ts","./electron/preload.ts"],"version":"5.9.3"}
