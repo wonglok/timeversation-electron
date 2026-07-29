@@ -17,7 +17,7 @@
     "start:build": "electron ./dist-electron",
     "server": "bun run server/index.ts",
     "server:dev": "bun --watch server/index.ts",
-    "prebuild": "rimraf ./dist ./dist-electron ./release",
+    "prebuild": "rimraf ./dist ./dist-electron ./release; sleep 3;",
     "build": "tsc && vite build && electron-builder --config ./electron-builder.ts",
     "lint": "npm run lint:eslint",
     "lint:eslint": "eslint --report-unused-disable-directives .",
