@@ -83,6 +83,9 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         homepage: "https://docs.anthropic.com/en/docs/claude-code",
         icon: ClaudeCodeColor,
     },
+
+    //
+
     // {
     //     name: "OpenAI Codex CLI",
     //     slug: "openai-codex-cli",
@@ -93,6 +96,9 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     homepage: "https://github.com/openai/codex",
     //     icon: CodexColor,
     // },
+
+    //
+
     {
         name: "OpenAI Codex SDK",
         slug: "openai-codex-sdk",
@@ -105,16 +111,6 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
 
     {
-        name: "OpenCode",
-        slug: "opencode",
-        cliName: "opencode",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Open-source terminal coding agent with MCP support",
-        homepage: "https://github.com/opencode-ai/opencode",
-        icon: OpenCodeIcon,
-    },
-    {
         name: "Kimi Code",
         slug: "kimi-code",
         cliName: "kimi",
@@ -123,6 +119,17 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         description: "Moonshot AI's Kimi-powered coding agent",
         homepage: "https://github.com/MoonshotAI/kimi-code",
         icon: KimiColor,
+    },
+
+    {
+        name: "OpenCode",
+        slug: "opencode",
+        cliName: "opencode",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Open-source terminal coding agent with MCP support",
+        homepage: "https://github.com/opencode-ai/opencode",
+        icon: OpenCodeIcon,
     },
 
     // {
@@ -136,6 +143,8 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     icon: QwenColor,
     // },
 
+    //
+
     // {
     //     name: "Gemini CLI",
     //     slug: "gemini-cli",
@@ -146,6 +155,9 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     homepage: "https://github.com/google-gemini/gemini-cli",
     //     icon: GeminiCLIColor,
     // },
+
+    //
+
     // {
     //     name: "Cursor CLI",
     //     slug: "cursor-cli",
@@ -156,6 +168,8 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     homepage: "https://cursor.com",
     //     icon: CursorIcon,
     // },
+
+    //
 
     // {
     //     name: "Pi Coding Agent",
@@ -168,6 +182,8 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     icon: PiIcon,
     // },
 
+    //
+
     // {
     //     name: "Kilo Code",
     //     slug: "kilo-code",
@@ -179,6 +195,8 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     icon: KiloCodeIcon,
     // },
 
+    //
+
     // {
     //     name: "GitHub Copilot (gh extension)",
     //     slug: "github-copilot",
@@ -189,8 +207,9 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     //     homepage: "https://docs.github.com/en/copilot",
     //     icon: GithubCopilotIcon,
     // },
+
     //
-    //
+
     // {
     //     name: "Cline CLI",
     //     slug: "cline-cli",
