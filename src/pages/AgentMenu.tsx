@@ -40,11 +40,11 @@ function InstalledDot() {
     );
 }
 
-function LoaderIcon() {
+function LoaderIcon({ size = 16 }: { size?: number }) {
     return (
         <svg
-            width="16"
-            height="16"
+            width={size}
+            height={size}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -58,6 +58,17 @@ function LoaderIcon() {
     );
 }
 
+// Skeleton placeholder card shown while agents are being detected
+function SkeletonCard() {
+    return (
+        <div className="flex flex-col items-center gap-2 px-4 py-4 rounded-sm border border-transparent bg-[var(--bg-panel)] animate-pulse">
+            <div className="w-9 h-9 rounded-sm bg-[var(--border-subtle)]" />
+            <div className="w-16 h-3 rounded-sm bg-[var(--border-subtle)]" />
+            <div className="w-12 h-2.5 rounded-sm bg-[var(--border-subtle)]" />
+        </div>
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -67,7 +78,7 @@ export function AgentMenu() {
     const [installed, setInstalled] = useState<Record<string, boolean>>({});
     const [checking, setChecking] = useState(true);
 
-    useEffect(() => {
+    const checkInstalled = () => {
         setChecking(true);
         const payload = getAgentDetectionPayload();
         fetch(`${API_BASE}/api/agents/detect`, {
@@ -86,9 +97,14 @@ export function AgentMenu() {
             .finally(() => {
                 setChecking(false);
             });
+    };
+
+    useEffect(() => {
+        checkInstalled();
     }, []);
 
     const installedCount = Object.values(installed).filter(Boolean).length;
+    const agentList = BUILTIN_AGENTS.filter((r) => r.slug !== "local");
 
     return (
         <main className="flex flex-col items-center px-6 pt-12 pb-16 min-h-screen bg-[var(--bg-canvas)]">
@@ -136,17 +152,40 @@ export function AgentMenu() {
                         Available agents
                     </span>
                     {checking ? (
-                        <LoaderIcon />
+                        <LoaderIcon size={12} />
                     ) : (
                         <span className="text-[10px] text-[var(--text-dim)] tabular-nums">
-                            {installedCount}/{BUILTIN_AGENTS.filter((r) => r.slug !== "local").length} installed
+                            {installedCount}/{agentList.length} installed
                         </span>
                     )}
+                    <button
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-sm text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Refresh agent status"
+                        onClick={checkInstalled}
+                        disabled={checking}
+                    >
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={checking ? "animate-spin" : ""}
+                        >
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                        </svg>
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 w-full">
-                    {BUILTIN_AGENTS.filter((r) => r.slug !== "local").map(
-                        (agent) => {
+                    {checking
+                        ? Array.from({ length: agentList.length }).map((_, i) => (
+                              <SkeletonCard key={i} />
+                          ))
+                        : agentList.map((agent) => {
                             const IconComponent = agent.icon;
                             const isInstalled = installed[agent.slug];
                             const isDark = agent.iconBg === "dark";
@@ -179,26 +218,7 @@ export function AgentMenu() {
                                     }`}
                                 >
                                     {/* Status indicator */}
-                                    {checking ? (
-                                        <span
-                                            className="absolute top-2 right-2"
-                                            title="Checking..."
-                                        >
-                                            <svg
-                                                width="12"
-                                                height="12"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth={2}
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                className="animate-spin text-[var(--text-dim)]"
-                                            >
-                                                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                                            </svg>
-                                        </span>
-                                    ) : isInstalled ? (
+                                    {isInstalled ? (
                                         <span
                                             className="absolute top-2 right-2 text-[var(--tiffany)]"
                                             title="Installed"
@@ -210,7 +230,7 @@ export function AgentMenu() {
                                     {/* Icon */}
                                     {IconComponent ? (
                                         <IconComponent
-                                            size={isInstalled && !checking ? 36 : 32}
+                                            size={isInstalled ? 36 : 32}
                                         />
                                     ) : (
                                         <div className="w-9 h-9 rounded-sm bg-[var(--border-subtle)]" />
