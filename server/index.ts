@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { BrowserWindow } from "electron";
 import { createChatRouter } from "./routes/chat";
 import { createConversationsRouter } from "./routes/conversations";
+import { createOpenAiNodeLlamaRouter } from "./routes/openai-node-llama";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -68,6 +69,13 @@ async function createServer({
     // --- Chat ---
     const chatRouter = await createChatRouter({ win, workspacePath });
     app.use("/api/chat", chatRouter);
+
+    // --- Local LLM (node-llama-cpp) ---
+    const modelsDir = workspacePath
+        ? `${workspacePath}/models`
+        : undefined;
+    const llmRouter = await createOpenAiNodeLlamaRouter({ modelsDir });
+    app.use("/api/llm", llmRouter);
 
     // --- Conversations ---
     const conversationsRouter = await createConversationsRouter({ workspacePath });

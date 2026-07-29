@@ -63,7 +63,8 @@ async function loadModel(): Promise<{
 
 const getWeather = defineTool({
     name: "get_weather",
-    description: "Get current weather for a city. Returns temperature and conditions.",
+    description:
+        "Get current weather for a city. Returns temperature and conditions.",
     parameters: {
         type: "object",
         properties: {
@@ -88,7 +89,8 @@ const getWeather = defineTool({
 
 const calculate = defineTool({
     name: "calculate",
-    description: "Evaluate a math expression. Supports +, -, *, /, and parentheses.",
+    description:
+        "Evaluate a math expression. Supports +, -, *, /, and parentheses.",
     parameters: {
         type: "object",
         properties: {
@@ -189,9 +191,7 @@ async function toolCallingExample(client: OpenAIMock): Promise<void> {
 
     // --- Step 1: Ask a question that triggers a tool call ---
     const response1 = (await client.chat.completions.create({
-        messages: [
-            { role: "user", content: "What's the weather in Tokyo?" },
-        ],
+        messages: [{ role: "user", content: "What's the weather in Tokyo?" }],
         tools: collected.tools,
         stream: false,
     })) as ChatCompletion;
@@ -213,7 +213,9 @@ async function toolCallingExample(client: OpenAIMock): Promise<void> {
             toolCalls.map(async (tc) => {
                 const handler = collected.toolHandlers[tc.function.name];
                 const args = JSON.parse(tc.function.arguments);
-                const result = handler ? await handler(args) : { error: "No handler" };
+                const result = handler
+                    ? await handler(args)
+                    : { error: "No handler" };
                 return {
                     role: "tool" as const,
                     tool_call_id: tc.id,
@@ -248,10 +250,7 @@ async function toolCallingExample(client: OpenAIMock): Promise<void> {
 async function multiTurnExample(client: OpenAIMock): Promise<void> {
     console.log("=== Multi-turn conversation ===\n");
 
-    const turns = [
-        "My name is Alice.",
-        "What's my name?",
-    ];
+    const turns = ["My name is Alice.", "What's my name?"];
 
     for (const turn of turns) {
         const response = (await client.chat.completions.create({
@@ -293,9 +292,7 @@ async function streamingWithToolsExample(client: OpenAIMock): Promise<void> {
     console.log("=== Streaming with tools ===\n");
 
     const stream = (await client.chat.completions.create({
-        messages: [
-            { role: "user", content: "Calculate (15 + 7) * 3" },
-        ],
+        messages: [{ role: "user", content: "Calculate (15 + 7) * 3" }],
         tools: collected.tools,
         stream: true,
     })) as AsyncIterable<ChatCompletionChunk>;

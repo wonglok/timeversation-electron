@@ -144,9 +144,7 @@ export async function createConversationsRouter({
     // POST /api/conversations/:id/open-folder — open the session dir in Finder
     // -----------------------------------------------------------------------
     router.post("/:id/open-folder", async (_req, res) => {
-        const conv = db.data.conversations.find(
-            (c) => c.id === _req.params.id,
-        );
+        const conv = db.data.conversations.find((c) => c.id === _req.params.id);
         if (!conv || !conv.sessionId) {
             res.status(404).json({ error: "Session not found" });
             return;

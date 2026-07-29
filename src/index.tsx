@@ -1,17 +1,21 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Routes, Route } from "react-router-dom";
-import { Home } from "./pages/Home.tsx";
+import { Menu } from "./pages/Menu.tsx";
 import { Chat } from "./pages/Chat.tsx";
 import "./index.css";
 import "@fontsource-variable/inter/opsz-italic.css";
+import { Home } from "./pages/Home.tsx";
+import { Setup } from "./pages/Setup.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <>
         <HashRouter>
             <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/menu" element={<Menu />} />
                 <Route path="/chat/:slug/:conversationId?" element={<Chat />} />
+                <Route path="/setup" element={<Setup />} />
             </Routes>
         </HashRouter>
     </>,
