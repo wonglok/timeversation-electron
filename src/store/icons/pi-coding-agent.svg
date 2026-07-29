@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="470px" height="470px" viewBox="0 0 470 470" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>pi-coding-agent</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="pi-coding-agent" transform="translate(0.290000, 0.290000)" fill="#000000">
+            <path d="M0,0 L352.07,0 L352.07,234.71 L234.71,234.71 L234.71,352.07 L117.36,352.07 L117.36,469.43 L0,469.43 L0,0 Z M117.36,117.36 L117.36,234.71 L234.71,234.71 L234.71,117.36 L117.36,117.36 Z" id="Shape"></path>
+            <polygon id="Path" fill-rule="nonzero" points="352.07 234.71 469.43 234.71 469.43 469.43 352.07 469.43"></polygon>
+        </g>
+    </g>
+</svg>

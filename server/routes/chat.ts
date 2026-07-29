@@ -9,7 +9,7 @@ import { handleCodexSDK } from "../agnets/handleCodexSDK";
 import { handleClaudeSession } from "../agnets/handleClaudeSession";
 import { handleKimiCodeSession } from "../agnets/handleKimiCodeSession";
 import { handleLocalOpenAISDK } from "../agnets/handleLocalOpenAISDK";
-// import { handleLocalAICodex } from "../agnets/handleLocalAICodex";
+import { handlePIAgentSession } from "../agnets/handlePIAgentSession";
 
 export const createChatRouter = async ({
     win,
@@ -88,6 +88,14 @@ export const createChatRouter = async ({
             });
         } else if (message && slug === "local") {
             handleLocalOpenAISDK({
+                workspacePath,
+                req,
+                res,
+                message,
+                conversationId: req.body.conversationId,
+            });
+        } else if (message && slug === "pi-coding-agent") {
+            handlePIAgentSession({
                 workspacePath,
                 req,
                 res,

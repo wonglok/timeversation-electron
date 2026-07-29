@@ -119,14 +119,14 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
 
     {
-        name: "Kimi Code",
-        slug: "kimi-code",
-        cliName: "kimi",
+        name: "Pi Coding Agent",
+        slug: "pi-coding-agent",
+        cliName: "pi",
         detectionArgs: ["--version"],
         versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Moonshot AI's Kimi-powered coding agent",
-        homepage: "https://github.com/MoonshotAI/kimi-code",
-        icon: KimiIcon,
+        description: "Pi AI coding assistant CLI",
+        homepage: "https://github.com/pi-ai/pi-coding-agent",
+        icon: PiIcon,
     },
 
     {
@@ -168,6 +168,17 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         },
     },
 
+    {
+        name: "Kimi Code",
+        slug: "kimi-code",
+        cliName: "kimi",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Moonshot AI's Kimi-powered coding agent",
+        homepage: "https://github.com/MoonshotAI/kimi-code",
+        icon: KimiIcon,
+    },
+
     // {
     //     name: "Qwen Code",
     //     slug: "qwen-code",
@@ -206,17 +217,6 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     // },
 
     //
-
-    // {
-    //     name: "Pi Coding Agent",
-    //     slug: "pi-coding-agent",
-    //     cliName: "pi",
-    //     detectionArgs: ["--version"],
-    //     versionRegex: /(\d+\.\d+\.\d+)/,
-    //     description: "Pi AI coding assistant CLI",
-    //     homepage: "https://github.com/pi-ai/pi-coding-agent",
-    //     icon: PiIcon,
-    // },
 
     //
 
