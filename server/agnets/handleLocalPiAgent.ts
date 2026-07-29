@@ -184,7 +184,7 @@ Be concise and direct in your responses.`,
                 extendResources: () => {},
                 reload: async () => {},
             },
-            tools: ["read", "bash", "edit", "write"],
+            tools: ["read", "bash", "edit", "write", "grep"],
         });
 
         session = result.session;
