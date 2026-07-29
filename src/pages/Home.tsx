@@ -41,7 +41,7 @@ export function Home() {
                 {/* Badge */}
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 text-[0.8rem] font-semibold text-[var(--text-secondary)] bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-full backdrop-blur-[16px] reveal-1">
                     <span className="w-[7px] h-[7px] rounded-full bg-[var(--tiffany)] inline-block" />
-                    Time & Converstaion
+                    use your agents well...
                 </div>
 
                 {/* Title */}
@@ -51,14 +51,14 @@ export function Home() {
 
                 {/* Subtitle */}
                 <p className="text-[1.15rem] text-[var(--text-secondary)] leading-[1.7] max-w-[480px] m-0 reveal-3">
-                    Conversations that creates working hours.
+                    Converstaions that creates working hours.
                 </p>
             </section>
 
             {/* ---- Agent Icons ---- */}
             <section className="flex flex-col items-center gap-6 mt-14 max-w-[720px] w-full reveal-4">
                 <h2 className="text-[0.85rem] font-semibold uppercase tracking-[0.08em] text-[var(--text-dim)] m-0">
-                    Use your agents, no need to buy a new plan, duh! 🤩
+                    SUPPORTED AGENTS
                 </h2>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full">
@@ -110,6 +110,10 @@ export function Home() {
                         );
                     })}
                 </div>
+
+                <h2 className="text-[0.85rem] font-semibold uppercase tracking-[0.08em] text-[var(--text-dim)] m-0">
+                    No need to buy a new plan, duh! 🤩
+                </h2>
             </section>
         </main>
     );
