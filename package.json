@@ -27,6 +27,7 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "^1.3.0",
     "@dannymichel/proxima-nova": "^4.5.2",
+    "@earendil-works/pi-coding-agent": "^0.82.1",
     "@fontsource-variable/inter": "^5.2.8",
     "@gonetone/get-youtube-id-by-url": "^2.0.0",
     "@lancedb/lancedb": "^0.31.0",
