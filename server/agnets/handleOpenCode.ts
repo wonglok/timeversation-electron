@@ -130,7 +130,7 @@ export const handleOpenCode = async ({
     // --- ACP stream from stdio ---
     const stream = ndJsonStream(
         Writable.toWeb(proc.stdin!),
-        Readable.toWeb(proc.stdout!),
+        Readable.toWeb(proc.stdout!) as ReadableStream<Uint8Array>,
     );
 
     const acpClient = client({ name: "timeversation" });
