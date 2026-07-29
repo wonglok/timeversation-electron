@@ -1006,44 +1006,6 @@ export function SetupLLM() {
                 space.
             </p>
 
-            {/* ---- Loaded Model Status ---- */}
-            {models && loadedModelName && (
-                <section className="w-full max-w-[680px] mb-6">
-                    <div className="flex items-center gap-2 px-4 py-3 rounded-sm bg-[var(--bg-surface)] border border-[var(--tiffany-soft)]">
-                        <span className="text-[var(--tiffany)]">
-                            <CircleDotIcon />
-                        </span>
-                        <span className="text-[12px] text-[var(--text-secondary)]">
-                            Currently loaded:
-                        </span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-                            {loadedModelName}
-                        </span>
-                    </div>
-                </section>
-            )}
-
-            {/* ---- CTA: Continue to chat ---- */}
-            {loadedModelName && (
-                <button
-                    className="btn-primary text-[13px] px-6 py-2.5 mt-6 gap-2"
-                    onClick={() => navigate("/chat/local")}
-                >
-                    <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                    Continue to Chat
-                </button>
-            )}
         </main>
     );
 }
