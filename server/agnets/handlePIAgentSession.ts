@@ -145,22 +145,13 @@ export const handlePIAgentSession = async ({
     // --continue resumes the conversation in this project directory.
     // Since we use a per-conversation cwd, Claude Code maintains isolated
     // session state for each conversation automatically.
-    const args = [
-        "-p",
-        message,
-        "--print",
-        "--output-format",
-        "stream-json",
-        "--verbose",
-        "--continue",
-        "--dangerously-skip-permissions",
-    ];
+    const args = [message, "--print", "--verbose", "--continue"];
 
     // --- Spawn claude process ---
-    const proc = spawn("claude", args, {
+    const proc = spawn("pi", args, {
         env: process.env,
         cwd: sessionPath,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["pipe", "pipe", "pipe"],
     });
 
     // --- UTF-8 decoders ---
