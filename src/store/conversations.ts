@@ -37,6 +37,10 @@ interface ConversationsState {
         agentSlug: string;
         title?: string;
     }) => Promise<Conversation | null>;
+    renameConversation: (
+        id: string,
+        title: string,
+    ) => Promise<Conversation | null>;
     deleteConversation: (id: string) => Promise<void>;
     setActiveId: (id: string | null) => void;
     fetchThread: (conversationId: string) => Promise<ThreadMessage[]>;
@@ -80,6 +84,30 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
                 activeId: conv.id,
             }));
             return conv;
+        } catch {
+            return null;
+        }
+    },
+
+    renameConversation: async (id, title) => {
+        try {
+            const res = await fetch(
+                `${API_BASE}/api/conversations/${id}`,
+                {
+                    method: "PATCH",
+                    mode: "cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title }),
+                },
+            );
+            if (!res.ok) return null;
+            const updated: Conversation = await res.json();
+            set((s) => ({
+                conversations: s.conversations.map((c) =>
+                    c.id === id ? updated : c,
+                ),
+            }));
+            return updated;
         } catch {
             return null;
         }

@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { Router } from "express";
+import { app, shell } from "electron";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { JSONFilePreset } from "lowdb/node";
@@ -137,6 +138,33 @@ export async function createConversationsRouter({
 
         await db.write();
         res.json(conv);
+    });
+
+    // -----------------------------------------------------------------------
+    // POST /api/conversations/:id/open-folder — open the session dir in Finder
+    // -----------------------------------------------------------------------
+    router.post("/:id/open-folder", async (_req, res) => {
+        const conv = db.data.conversations.find(
+            (c) => c.id === _req.params.id,
+        );
+        if (!conv || !conv.sessionId) {
+            res.status(404).json({ error: "Session not found" });
+            return;
+        }
+
+        const sessionPath = path.join(
+            app.getPath("appData"),
+            "timeversation",
+            "sessions",
+            conv.sessionId,
+        );
+        try {
+            mkdirSync(sessionPath, { recursive: true });
+        } catch (_) {
+            // Directory already exists
+        }
+        await shell.openPath(sessionPath);
+        res.json({ ok: true, path: sessionPath });
     });
 
     // -----------------------------------------------------------------------
