@@ -231,9 +231,10 @@ export const handleKimiCodeSession = async ({
 
     // --- stderr -> SSE named events ---
     proc.stderr.on("data", (raw: Buffer) => {
-        pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
-            writeSSEEvent(res, line, "stderr"),
-        );
+        console.log(raw.toString());
+        // pipeChunk(raw, stderrDecoder, { buf: stderrBuf }, (line) =>
+        //     writeSSEEvent(res, line, "stderr"),
+        // );
     });
 
     // // --- Process spawn error ---
