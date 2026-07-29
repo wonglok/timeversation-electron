@@ -49,6 +49,12 @@ export interface AgentDefinition {
     homepage?: string;
     /** Icon component from @lobehub/icons for UI display */
     icon?: ComponentType<AgentIconProps>;
+    /**
+     * Card background override so icons are readable on the home page.
+     * - `"light"` (default) — white surface, works for dark/colorful icons
+     * - `"dark"` — dark surface, for icons with white/light elements (e.g. Kimi)
+     */
+    iconBg?: "light" | "dark";
 }
 
 // ============================================================================
@@ -119,6 +125,7 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         description: "Moonshot AI's Kimi-powered coding agent",
         homepage: "https://github.com/MoonshotAI/kimi-code",
         icon: KimiColor,
+        iconBg: "dark",
     },
 
     {
