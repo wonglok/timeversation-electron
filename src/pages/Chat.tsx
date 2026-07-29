@@ -110,7 +110,7 @@ export function Chat() {
 
                 {conversationId && (
                     <ChatBox
-                        key={JSON.stringify({ conversationId, slug, agent })}
+                        key={`${slug}-${conversationId}`}
                         agentSlug={agent.slug}
                         agentName={agent.name}
                     />
