@@ -41,7 +41,7 @@ export function Home() {
                 {/* Badge */}
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 text-[0.8rem] font-semibold text-[var(--text-secondary)] bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-full backdrop-blur-[16px] reveal-1">
                     <span className="w-[7px] h-[7px] rounded-full bg-[var(--tiffany)] inline-block" />
-                    use your agents well...
+                    Use your agents well...
                 </div>
 
                 {/* Title */}

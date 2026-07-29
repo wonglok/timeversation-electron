@@ -92,13 +92,6 @@ export function Chat() {
             <div className="flex-1 flex flex-col h-screen min-w-0">
                 {/* Header */}
                 <header className="flex items-center gap-3 py-4 px-6 border-b border-[var(--border-subtle)] shrink-0">
-                    <button
-                        className="btn-secondary !px-3 !py-1.5 text-sm"
-                        onClick={() => navigate("/")}
-                    >
-                        Back
-                    </button>
-
                     <div className="flex items-center gap-2.5 ml-1">
                         {IconComponent && <IconComponent size={28} />}
                         <div>

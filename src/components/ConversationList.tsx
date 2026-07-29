@@ -338,10 +338,13 @@ export function ConversationList() {
     async function handleOpenFolder(conv: Conversation) {
         if (!conv.sessionId) return;
         try {
-            await fetch(`${API_BASE}/api/conversations/${conv.id}/open-folder`, {
-                method: "POST",
-                mode: "cors",
-            });
+            await fetch(
+                `${API_BASE}/api/conversations/${conv.id}/open-folder`,
+                {
+                    method: "POST",
+                    mode: "cors",
+                },
+            );
         } catch (_) {
             // Silently fail — folder open is best-effort
         }
@@ -353,6 +356,16 @@ export function ConversationList() {
 
     return (
         <aside className="w-64 shrink-0 flex flex-col h-screen border-r border-[var(--border-subtle)] bg-[var(--bg-card)]">
+            {/* Header */}
+            <header className="flex items-center gap-3 py-4 px-6 border-b border-[var(--border-subtle)] shrink-0 bg-gray-500">
+                <button
+                    className=" !px-3 !py-1.5 text-sm text-white border-white border rounded-lg"
+                    onClick={() => navigate("/")}
+                >
+                    Back
+                </button>
+            </header>
+
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border-subtle)]">
                 <h3 className="text-[0.8rem] font-bold text-[var(--text-primary)] m-0 tracking-[-0.01em]">
@@ -392,18 +405,12 @@ export function ConversationList() {
                     return (
                         <div
                             key={conv.id}
-                            onClick={() =>
-                                !isRenaming && handleSelect(conv.id)
-                            }
+                            onClick={() => !isRenaming && handleSelect(conv.id)}
                             className={`group relative flex flex-col gap-0.5 px-4 py-2.5 mx-2 rounded-lg transition-all duration-200 ${
                                 isActive
                                     ? "bg-[var(--tiffany-glow)] border border-[var(--border-glow)]"
                                     : "hover:bg-[var(--border-subtle)] border border-transparent"
-                            } ${
-                                isRenaming
-                                    ? "cursor-text"
-                                    : "cursor-pointer"
-                            }`}
+                            } ${isRenaming ? "cursor-text" : "cursor-pointer"}`}
                         >
                             {/* Title */}
                             <div className="flex items-center gap-2">
