@@ -51,20 +51,6 @@ interface SseError {
 }
 
 type SseEvent = SseProgress | SseDone | SseCancelled | SseError;
-
-interface ModelCompatInfo {
-    modelPath: string;
-    metadata: {
-        version: number;
-        tensorCount: number;
-        splicedParts: number;
-        totalTensorCount: number;
-        metadataSize: number;
-    };
-    compatibility: { score: number; percent: string };
-    flashAttention: { score: number; percent: string };
-}
-
 // ============================================================================
 // Preset models for quick download
 // ============================================================================
@@ -193,23 +179,6 @@ function XIcon() {
             strokeLinejoin="round"
         >
             <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-    );
-}
-
-function CheckIcon() {
-    return (
-        <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M20 6 9 17l-5-5" />
         </svg>
     );
 }
@@ -863,45 +832,6 @@ export function SetupLLM() {
                                             <span className="text-[10px] text-[var(--text-dim)] font-mono">
                                                 {formatBytes(file.size)}
                                             </span>
-
-                                            {/* Compatibility info */}
-                                            {compat && (
-                                                <div className="flex items-center gap-2 mt-1.5 text-[10px]">
-                                                    <span
-                                                        className={`inline-flex items-center gap-1 ${
-                                                            compat.compatibility
-                                                                .score >= 0.8
-                                                                ? "text-green-600"
-                                                                : compat
-                                                                        .compatibility
-                                                                        .score >=
-                                                                    0.5
-                                                                  ? "text-amber-600"
-                                                                  : "text-red-600"
-                                                        }`}
-                                                    >
-                                                        {compat.compatibility
-                                                            .score >= 0.8 ? (
-                                                            <CheckIcon />
-                                                        ) : (
-                                                            <AlertIcon />
-                                                        )}
-                                                        Compat:{" "}
-                                                        {
-                                                            compat.compatibility
-                                                                .percent
-                                                        }
-                                                    </span>
-                                                    <span className="text-[var(--text-dim)]">
-                                                        Flash Attn:{" "}
-                                                        {
-                                                            compat
-                                                                .flashAttention
-                                                                .percent
-                                                        }
-                                                    </span>
-                                                </div>
-                                            )}
                                         </div>
 
                                         {/* Actions */}
