@@ -60,23 +60,6 @@
             <div class="loader-label">Timeversation</div>
             <div class="loader-sub">Loading...</div>
         </div>
-        <script>
-            // Hide the loader once React mounts
-            window.addEventListener("DOMContentLoaded", function () {
-                var obs = new MutationObserver(function () {
-                    var root = document.getElementById("root");
-                    if (root && root.children.length > 1) {
-                        var loader = document.getElementById("cssloader");
-                        if (loader) {
-                            loader.classList.add("hide");
-                            setTimeout(function () { loader.remove(); }, 500);
-                        }
-                        obs.disconnect();
-                    }
-                });
-                obs.observe(document.getElementById("root"), { childList: true, subtree: true });
-            });
-        </script>
     </div>
 
     <script type="module" src="./index.tsx"> </script>

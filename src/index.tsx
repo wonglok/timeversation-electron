@@ -23,6 +23,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </>,
 );
 
+// Hide the CSS loader once React has rendered its first frame
+requestAnimationFrame(() => {
+    const loader = document.getElementById("cssloader");
+    if (loader) {
+        loader.classList.add("hide");
+        setTimeout(() => loader.remove(), 500);
+    }
+});
+
 /*
 React.StrictMode
 React.StrictMode
