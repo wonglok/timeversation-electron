@@ -54,6 +54,28 @@ export async function createOpenAiNodeLlamaRouter({
     let state: LlmState | null = null;
     let currentModelPath: string | null = null;
 
+    /** Dispose current model, context, and sequence; clear state */
+    function disposeState() {
+        if (!state) return;
+        try {
+            state.sequence.dispose();
+        } catch {
+            /* ignore */
+        }
+        try {
+            state.context.dispose();
+        } catch {
+            /* ignore */
+        }
+        try {
+            state.model.dispose();
+        } catch {
+            /* ignore */
+        }
+        state = null;
+        currentModelPath = null;
+    }
+
     /** Find the first .gguf file in the models directory */
     function findGgufFile(dir: string): string | null {
         try {
@@ -84,17 +106,11 @@ export async function createOpenAiNodeLlamaRouter({
         }
 
         // Dispose previous state if switching models
-        if (state) {
-            try {
-                state.context.dispose();
-            } catch {
-                /* ignore */
-            }
-        }
+        disposeState();
 
         const llama = await getLlama();
         const model = await llama.loadModel({ modelPath });
-        const contextSize = Number(process.env.LLM_CONTEXT_SIZE) || 8192;
+        const contextSize = Number(process.env.LLM_CONTEXT_SIZE) || 128000;
         const context = await model.createContext({ contextSize });
         const sequence = context.getSequence();
 
@@ -184,21 +200,6 @@ export async function createOpenAiNodeLlamaRouter({
     });
 
     // ------------------------------------------------------------------
-    // POST /reset — clear conversation history
-    // ------------------------------------------------------------------
-
-    router.post("/reset", async (_req, res) => {
-        try {
-            const client = await getClient();
-            client.chat.completions.resetHistory();
-            res.json({ ok: true });
-        } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            res.status(500).json({ error: { message } });
-        }
-    });
-
-    // ------------------------------------------------------------------
     // GET /models — list downloaded .gguf files
     // ------------------------------------------------------------------
 
@@ -281,17 +282,11 @@ export async function createOpenAiNodeLlamaRouter({
 
         try {
             // Dispose previous state
-            if (state) {
-                try {
-                    state.context.dispose();
-                } catch {
-                    /* ignore */
-                }
-            }
+            disposeState();
 
             const llama = await getLlama();
             const model = await llama.loadModel({ modelPath });
-            const contextSize = Number(process.env.LLM_CONTEXT_SIZE) || 8192;
+            const contextSize = Number(process.env.LLM_CONTEXT_SIZE) || 128000;
             const context = await model.createContext({ contextSize });
             const sequence = context.getSequence();
 
@@ -465,15 +460,7 @@ export async function createOpenAiNodeLlamaRouter({
             activeDownloader = null;
 
             // Unload current model so next chat request picks up the new one
-            if (state) {
-                try {
-                    state.context.dispose();
-                } catch {
-                    /* ignore */
-                }
-                state = null;
-                currentModelPath = null;
-            }
+            disposeState();
 
             res.write(
                 `data: ${JSON.stringify({

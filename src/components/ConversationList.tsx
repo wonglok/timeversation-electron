@@ -361,7 +361,11 @@ export function ConversationList() {
                 <button
                     className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors"
                     onClick={() => {
-                        window.history.go(-1);
+                        if (slug === "local") {
+                            navigate("/setup");
+                        } else {
+                            navigate("/menu");
+                        }
                     }}
                 >
                     <svg

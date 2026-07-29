@@ -277,7 +277,12 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     appendBubble("system", {
                         systemSubtype: "plan",
                         systemDetail: `Plan: ${done}/${items.length} tasks`,
-                        text: items.map((t) => `- [${t.completed ? "x" : " "}] ${t.text}`).join("\n"),
+                        text: items
+                            .map(
+                                (t) =>
+                                    `- [${t.completed ? "x" : " "}] ${t.text}`,
+                            )
+                            .join("\n"),
                     });
                 }
                 break;
@@ -693,7 +698,7 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
     // ---- Render ----
 
     return (
-        <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)]">
+        <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)] overflow-scroll w-full">
             {/* Messages — central canvas */}
             <div
                 ref={scrollRef}

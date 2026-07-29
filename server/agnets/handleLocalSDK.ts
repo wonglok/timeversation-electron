@@ -164,13 +164,22 @@ export const handleLocalSDK = async ({
             workspacePath,
             conversationId as string,
         );
+        console.log(msg);
 
         let assistantText = "";
 
         // --- Step 1: Ask a question that triggers a tool call ---
         const responseStream = await client.chat.completions.create({
             model: `default`,
-            messages: [...msg, { role: "user", content: message }],
+            messages: [
+                ...msg.map((r) => {
+                    return {
+                        content: r.content,
+                        role: r.role,
+                    };
+                }),
+                { role: "user", content: message },
+            ],
             stream: true,
         });
 
