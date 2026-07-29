@@ -148,8 +148,23 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
         versionRegex: /(\d+\.\d+\.\d+)/,
         description: "Local AI Agent",
         homepage: "https://github.com/wonglok/timeversation",
-        icon: function Icon() {
-            return <>Local</>;
+        icon: function Icon({ size = 36 }: AgentIconProps) {
+            return (
+                <svg
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#81D8D0"
+                    strokeWidth={1.2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    <path d="M8 2h8M8 22h8M9 2v8a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V2" />
+                    <path d="M9 22v-8a3 3 0 0 1 3-3h0a3 3 0 0 1 3 3v8" />
+                    <path d="M12 13v2" opacity={0.5} />
+                </svg>
+            );
         },
     },
 
