@@ -182,92 +182,91 @@ export function AgentMenu() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 w-full">
                     {checking
-                        ? Array.from({ length: agentList.length }).map((_, i) => (
-                              <SkeletonCard key={i} />
-                          ))
+                        ? Array.from({ length: agentList.length }).map(
+                              (_, i) => <SkeletonCard key={i} />,
+                          )
                         : agentList.map((agent) => {
-                            const IconComponent = agent.icon;
-                            const isInstalled = installed[agent.slug];
-                            const isDark = agent.iconBg === "dark";
+                              const IconComponent = agent.icon;
+                              const isInstalled = installed[agent.slug];
+                              const isDark = agent.iconBg === "dark";
 
-                            return (
-                                <div
-                                    key={agent.slug}
-                                    title={
-                                        isInstalled
-                                            ? `Open chat with ${agent.name}`
-                                            : `${agent.name} — ${agent.description}`
-                                    }
-                                    onClick={
-                                        isInstalled
-                                            ? () => {
-                                                  navigate(
-                                                      `/chat/${agent.slug}`,
-                                                  );
-                                              }
-                                            : undefined
-                                    }
-                                    className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-sm border transition-all duration-150 select-none ${
-                                        isDark
-                                            ? isInstalled
-                                                ? "bg-[#1E2D3B] border-[#2D404F] cursor-pointer hover:border-[var(--tiffany)] hover:bg-[#233645] hover:shadow-sm"
-                                                : "bg-[#1A2733] border-transparent cursor-default opacity-60"
-                                            : isInstalled
-                                              ? "bg-[var(--bg-surface)] border-[var(--border-panel)] cursor-pointer hover:border-[var(--tiffany)] hover:shadow-sm"
-                                              : "bg-[var(--bg-panel)] border-transparent cursor-default opacity-60"
-                                    }`}
-                                >
-                                    {/* Status indicator */}
-                                    {isInstalled ? (
-                                        <span
-                                            className="absolute top-2 right-2 text-[var(--tiffany)]"
-                                            title="Installed"
-                                        >
-                                            <InstalledDot />
-                                        </span>
-                                    ) : null}
+                              return (
+                                  <div
+                                      key={agent.slug}
+                                      title={
+                                          isInstalled
+                                              ? `Open chat with ${agent.name}`
+                                              : `${agent.name} — ${agent.description}`
+                                      }
+                                      onClick={
+                                          isInstalled
+                                              ? () => {
+                                                    navigate(
+                                                        `/chat/${agent.slug}`,
+                                                    );
+                                                }
+                                              : undefined
+                                      }
+                                      className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-sm border transition-all duration-150 select-none ${
+                                          isDark
+                                              ? isInstalled
+                                                  ? "bg-[#1E2D3B] border-[#2D404F] cursor-pointer hover:border-[var(--tiffany)] hover:bg-[#233645] hover:shadow-sm"
+                                                  : "bg-[#1A2733] border-transparent cursor-default opacity-60"
+                                              : isInstalled
+                                                ? "bg-[var(--bg-surface)] border-[var(--border-panel)] cursor-pointer hover:border-[var(--tiffany)] hover:shadow-sm"
+                                                : "bg-[var(--bg-panel)] border-transparent cursor-default opacity-60"
+                                      }`}
+                                  >
+                                      {/* Status indicator */}
+                                      {isInstalled ? (
+                                          <span
+                                              className="absolute top-2 right-2 text-[var(--tiffany)]"
+                                              title="Installed"
+                                          >
+                                              <InstalledDot />
+                                          </span>
+                                      ) : null}
 
-                                    {/* Icon */}
-                                    {IconComponent ? (
-                                        <IconComponent
-                                            size={isInstalled ? 36 : 32}
-                                        />
-                                    ) : (
-                                        <div className="w-9 h-9 rounded-sm bg-[var(--border-subtle)]" />
-                                    )}
+                                      {/* Icon */}
+                                      {IconComponent ? (
+                                          <IconComponent
+                                              size={isInstalled ? 36 : 32}
+                                          />
+                                      ) : (
+                                          <div className="w-9 h-9 rounded-sm bg-[var(--border-subtle)]" />
+                                      )}
 
-                                    {/* Name */}
-                                    <span
-                                        className={`text-[12px] font-semibold leading-tight text-center ${
-                                            isDark
-                                                ? "text-[#E8ECF0]"
-                                                : "text-[var(--text-primary)]"
-                                        }`}
-                                    >
-                                        {agent.name}
-                                    </span>
+                                      {/* Name */}
+                                      <span
+                                          className={`text-[12px] font-semibold leading-tight text-center ${
+                                              isDark
+                                                  ? "text-[#E8ECF0]"
+                                                  : "text-[var(--text-primary)]"
+                                          }`}
+                                      >
+                                          {agent.name}
+                                      </span>
 
-                                    {/* CLI name — mono pill */}
-                                    <span
-                                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded-sm leading-none ${
-                                            isDark
-                                                ? "text-[#8CA0B0] bg-[#16232F]"
-                                                : "text-[var(--text-dim)] bg-[var(--bg-panel)]"
-                                        }`}
-                                    >
-                                        {agent.cliName}
-                                    </span>
+                                      {/* CLI name — mono pill */}
+                                      <span
+                                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded-sm leading-none ${
+                                              isDark
+                                                  ? "text-[#8CA0B0] bg-[#16232F]"
+                                                  : "text-[var(--text-dim)] bg-[var(--bg-panel)]"
+                                          }`}
+                                      >
+                                          {agent.cliName}
+                                      </span>
 
-                                    {/* Hover hint */}
-                                    {isInstalled && (
-                                        <span className="hidden absolute bottom-2 right-2 text-[var(--tiffany)] opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <ChevronRightIcon />
-                                        </span>
-                                    )}
-                                </div>
-                            );
-                        },
-                    )}
+                                      {/* Hover hint */}
+                                      {isInstalled && (
+                                          <span className="hidden absolute bottom-2 right-2 text-[var(--tiffany)] opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <ChevronRightIcon />
+                                          </span>
+                                      )}
+                                  </div>
+                              );
+                          })}
                 </div>
             </section>
 
@@ -333,7 +332,7 @@ export function AgentMenu() {
 
             {/* ---- Footer ---- */}
             <p className="mt-10 text-[10px] text-[var(--text-dim)]">
-                All agents run locally on your machine.
+                Local AI may not have all the capabilites of the cloud AI
             </p>
         </main>
     );
