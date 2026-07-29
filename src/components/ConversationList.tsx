@@ -2,10 +2,11 @@
 // ConversationList — left sidebar with conversation history
 // ============================================================================
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useConversationsStore } from "../store/conversations";
 import { BUILTIN_AGENTS } from "../store/BUILTIN_AGENTS";
+import type { Conversation } from "../store/conversations";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -78,6 +79,109 @@ function TrashIcon() {
     );
 }
 
+function WarningIcon() {
+    return (
+        <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-yellow-500"
+        >
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <path d="M12 9v4M12 17h.01" />
+        </svg>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Confirm delete modal
+// ---------------------------------------------------------------------------
+
+function ConfirmDeleteModal({
+    conversation,
+    onConfirm,
+    onCancel,
+}: {
+    conversation: Conversation;
+    onConfirm: () => void;
+    onCancel: () => void;
+}) {
+    const confirmRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        // Focus the confirm button on mount so Enter works naturally,
+        // but user can Tab to Cancel if needed.
+        confirmRef.current?.focus();
+
+        function handleKey(e: KeyboardEvent) {
+            if (e.key === "Escape") {
+                e.preventDefault();
+                onCancel();
+            }
+        }
+
+        document.addEventListener("keydown", handleKey);
+        return () => document.removeEventListener("keydown", handleKey);
+    }, [onCancel]);
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={onCancel}
+        >
+            <div
+                className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl shadow-2xl w-[340px] p-6 flex flex-col gap-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Icon + Title */}
+                <div className="flex items-center gap-3">
+                    <WarningIcon />
+                    <h3 className="text-[0.9rem] font-semibold text-[var(--text-primary)] m-0">
+                        Delete conversation?
+                    </h3>
+                </div>
+
+                {/* Description */}
+                <p className="text-[0.75rem] text-[var(--text-dim)] m-0 leading-relaxed">
+                    This will permanently delete "
+                    <span className="text-[var(--text-primary)] font-medium">
+                        {conversation.title}
+                    </span>
+                    " and all its messages. This action cannot be undone.
+                </p>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-1">
+                    <button
+                        className="px-3.5 py-1.5 rounded-lg text-[0.75rem] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)] transition-colors"
+                        onClick={onCancel}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        ref={confirmRef}
+                        className="px-3.5 py-1.5 rounded-lg text-[0.75rem] font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+                        onClick={onConfirm}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                onConfirm();
+                            }
+                        }}
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -128,12 +232,27 @@ export function ConversationList() {
         }
     }
 
-    async function handleDelete(e: React.MouseEvent, id: string) {
+    const [pendingDelete, setPendingDelete] = useState<Conversation | null>(
+        null,
+    );
+
+    function handleDelete(e: React.MouseEvent, conv: Conversation) {
         e.stopPropagation();
+        setPendingDelete(conv);
+    }
+
+    async function handleConfirmDelete() {
+        if (!pendingDelete) return;
+        const id = pendingDelete.id;
+        setPendingDelete(null);
         await deleteConversation(id);
         if (activeId === id) {
             navigate(`/chat/${slug}`);
         }
+    }
+
+    function handleCancelDelete() {
+        setPendingDelete(null);
     }
 
     function handleSelect(id: string) {
@@ -195,7 +314,7 @@ export function ConversationList() {
 
                                 {/* Delete button */}
                                 <button
-                                    onClick={(e) => handleDelete(e, conv.id)}
+                                    onClick={(e) => handleDelete(e, conv)}
                                     className="hidden group-hover:flex items-center justify-center w-5 h-5 rounded text-[var(--text-dim)] hover:text-red-400 hover:bg-red-50 shrink-0 transition-colors"
                                     title="Delete conversation"
                                 >
@@ -213,6 +332,15 @@ export function ConversationList() {
                     );
                 })}
             </div>
+
+            {/* Confirm delete modal */}
+            {pendingDelete && (
+                <ConfirmDeleteModal
+                    conversation={pendingDelete}
+                    onConfirm={handleConfirmDelete}
+                    onCancel={handleCancelDelete}
+                />
+            )}
         </aside>
     );
 }
