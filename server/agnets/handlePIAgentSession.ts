@@ -142,20 +142,30 @@ export const handlePIAgentSession = async ({
     let assistantText = "";
 
     // --- CLI args ---
-    // --continue resumes the conversation in this project directory.
-    // Since we use a per-conversation cwd, Claude Code maintains isolated
-    // session state for each conversation automatically.
+    // --print: non-interactive, respond and exit.
+    // --continue: resume the previous conversation from session-dir.
+    // --session-dir: persist session state in a per-conversation directory
+    //   under app data, isolated from the workspace and other conversations.
+    // --tools: enable full file-system access (read, write, edit, bash,
+    //   plus grep/find/ls for search/list operations).
     const args = [
-        //
         JSON.stringify(message),
         "--print",
         "--continue",
+        "--tools",
+        "read,bash,edit,write,grep,find,ls",
+        "--session-dir",
+        sessionPath,
     ];
 
-    // --- Spawn claude process ---
+    // Run the agent in the workspace directory so it can read/write/search
+    // project files. Fall back to the session path if no workspace is set.
+    const workDir = workspacePath || sessionPath;
+
+    // --- Spawn pi process ---
     const proc = spawn("pi", args, {
         env: process.env,
-        cwd: sessionPath,
+        cwd: workDir,
         stdio: ["ignore", "pipe", "pipe"],
     });
 
