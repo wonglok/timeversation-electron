@@ -141,7 +141,11 @@ async function createServer({
     app.use("/api/chat", chatRouter);
 
     // --- Local LLM (node-llama-cpp) ---
-    const modelsDir = path.join(electronApp.getPath("appData"), "ai-models");
+    const modelsDir = path.join(
+        electronApp.getPath("appData"),
+        "timversation",
+        "ai-models",
+    );
     const llmRouter = await createOpenAiNodeLlamaRouter({ modelsDir });
     app.use("/api/llm", llmRouter);
 
