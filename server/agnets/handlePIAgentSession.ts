@@ -160,7 +160,7 @@ export const handlePIAgentSession = async ({
 
     // Run the agent in the workspace directory so it can read/write/search
     // project files. Fall back to the session path if no workspace is set.
-    const workDir = workspacePath || sessionPath;
+    const workDir = sessionPath || workspacePath;
 
     // --- Spawn pi process ---
     const proc = spawn("pi", args, {

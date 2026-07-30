@@ -155,8 +155,12 @@ export const handleLocalPiAgent = async ({
         }
 
         // --- Create agent session with full coding tools ---
+        // Run in the workspace directory so the agent can read/write/search
+        // project files. Fall back to the session path if no workspace is set.
+        const workDir = workspacePath || sessionPath;
+
         const result = await createAgentSession({
-            cwd: sessionPath,
+            cwd: workDir,
             model,
             thinkingLevel: "high",
             modelRuntime,
@@ -176,15 +180,16 @@ export const handleLocalPiAgent = async ({
                 getThemes: () => ({ themes: [], diagnostics: [] }),
                 getAgentsFiles: () => ({ agentsFiles: [] }),
                 getSystemPrompt: () =>
-                    `You are a helpful coding assistant with tool access.
-You can read, write, edit files, and execute bash commands.
-Work in the directory: ${sessionPath}
+                    `You are a helpful coding assistant with full file-system tool access.
+You can read, write, and edit files, search with grep, list files with find and ls,
+and execute terminal commands with bash.
+Work in the directory: ${workDir}
 Be concise and direct in your responses.`,
                 getAppendSystemPrompt: () => [],
                 extendResources: () => {},
                 reload: async () => {},
             },
-            tools: ["read", "bash", "edit", "write", "grep"],
+            tools: ["read", "bash", "edit", "write", "grep", "find", "ls"],
         });
 
         session = result.session;
