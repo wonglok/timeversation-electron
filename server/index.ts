@@ -143,7 +143,7 @@ async function createServer({
     // --- Local LLM (node-llama-cpp) ---
     const modelsDir = path.join(
         electronApp.getPath("appData"),
-        "timversation",
+        "timeversation",
         "ai-models",
     );
     const llmRouter = await createOpenAiNodeLlamaRouter({ modelsDir });
