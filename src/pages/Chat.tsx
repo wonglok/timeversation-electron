@@ -2,6 +2,7 @@
 // Chat page — agent lookup + layout shell (2026 sizing)
 // ============================================================================
 
+import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { BUILTIN_AGENTS } from "../store/BUILTIN_AGENTS";
 import { ConversationList } from "../components/ConversationList";
@@ -72,10 +73,27 @@ export function Chat() {
         conversationId?: string;
     }>();
     const navigate = useNavigate();
+    const conversations = useConversationsStore((s) => s.conversations);
+    const fetchConversations = useConversationsStore(
+        (s) => s.fetchConversations,
+    );
     const createConversation = useConversationsStore(
         (s) => s.createConversation,
     );
     const agent = BUILTIN_AGENTS.find((a) => a.slug === slug);
+
+    // Auto-select the first conversation for this agent when none is active
+    useEffect(() => {
+        fetchConversations();
+    }, [slug, fetchConversations]);
+
+    useEffect(() => {
+        if (conversationId || !slug) return;
+        const first = conversations.find((c) => c.agentSlug === slug);
+        if (first) {
+            navigate(`/chat/${slug}/${first.id}`, { replace: true });
+        }
+    }, [conversationId, slug, conversations, navigate]);
 
     if (!agent) {
         return (
