@@ -432,28 +432,26 @@ export function SetupLLM() {
         async (modelPath: string) => {
             setLoadingModel(modelPath);
             try {
-                const res = await fetch(`${API_BASE}/api/llm/models/load`, {
-                    method: "POST",
-                    mode: "cors",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        filename: modelPath.split("/").pop(),
-                    }),
-                });
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    throw new Error(
-                        (err as { error?: string }).error ||
-                            "Failed to load model",
-                    );
-                }
+                // const res = await fetch(`${API_BASE}/api/llm/models/load`, {
+                //     method: "POST",
+                //     mode: "cors",
+                //     headers: { "Content-Type": "application/json" },
+                //     body: JSON.stringify({
+                //         filename: modelPath.split("/").pop(),
+                //     }),
+                // });
+                // if (!res.ok) {
+                //     const err = await res.json().catch(() => ({}));
+                //     throw new Error(
+                //         (err as { error?: string }).error ||
+                //             "Failed to load model",
+                //     );
+                // }
                 await fetchModels();
                 navigate("/chat/local");
             } catch (err) {
                 setError(
-                    err instanceof Error
-                        ? err.message
-                        : "Failed to load model",
+                    err instanceof Error ? err.message : "Failed to load model",
                 );
             } finally {
                 setLoadingModel(null);
@@ -559,8 +557,7 @@ export function SetupLLM() {
                                                 ) : compat ? (
                                                     <span
                                                         className={`shrink-0 w-3 h-3 rounded-full ${
-                                                            compat.score >=
-                                                            0.8
+                                                            compat.score >= 0.8
                                                                 ? "bg-lime-400 lime-pulse-dot"
                                                                 : compat.score >=
                                                                     0.5

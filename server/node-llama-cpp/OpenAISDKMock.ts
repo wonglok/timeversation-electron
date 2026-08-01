@@ -37,7 +37,8 @@ function randomHex(len: number): string {
 function convertOpenAiToolsToModelFunctions(
     tools: ChatCompletionTool[],
 ): ChatModelFunctions {
-    const functions: Record<string, { description?: string; params?: any }> = {};
+    const functions: Record<string, { description?: string; params?: any }> =
+        {};
 
     for (const tool of tools) {
         if (tool.type !== "function") continue;
@@ -271,9 +272,7 @@ export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> 
         };
 
         try {
-            const result = await this._api._runGenerationLoop(
-                this._functions,
-            );
+            const result = await this._api._runGenerationLoop(this._functions);
 
             // Yield accumulated text.
             if (result.content) {
@@ -410,10 +409,8 @@ export class ChatCompletionsAPI {
     >;
 
     // Map of generated call IDs → {name, params} for matching tool results.
-    private _generatedCalls: Map<
-        string,
-        { name: string; params: any }
-    > = new Map();
+    private _generatedCalls: Map<string, { name: string; params: any }> =
+        new Map();
 
     // Config-level model functions (backward compat).
     private _modelFunctions?: ChatModelFunctions;
@@ -528,7 +525,9 @@ export class ChatCompletionsAPI {
             lastModelIdx = this._chatHistory.length - 1;
         }
 
-        const modelResponse = this._chatHistory[lastModelIdx]! as ChatModelResponse;
+        const modelResponse = this._chatHistory[
+            lastModelIdx
+        ]! as ChatModelResponse;
 
         for (const tm of toolMessages) {
             const callInfo = this._generatedCalls.get(tm.tool_call_id ?? "");
@@ -640,8 +639,7 @@ export class ChatCompletionsAPI {
             // Update persisted state from the evaluation result.
             this._chatHistory = res.lastEvaluation.cleanHistory;
             this._contextWindow = res.lastEvaluation.contextWindow;
-            this._lastShiftMetadata =
-                res.lastEvaluation.contextShiftMetadata;
+            this._lastShiftMetadata = res.lastEvaluation.contextShiftMetadata;
 
             // Accumulate text the model generated before calling functions.
             if (res.response) {
@@ -759,8 +757,7 @@ export class ChatCompletionsAPI {
 
         return {
             content: fullContent,
-            toolCalls:
-                allToolCalls.length > 0 ? allToolCalls : undefined,
+            toolCalls: allToolCalls.length > 0 ? allToolCalls : undefined,
             finishReason,
         };
     }

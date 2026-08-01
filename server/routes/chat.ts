@@ -1,14 +1,14 @@
 import { Router } from "express";
 // import { handleClaude } from "../agnets/handleClaude";
 import { handleOpenCode } from "../agnets/handleOpenCode";
-import { handleLocalPiAgent } from "../agnets/handleLocalPiAgent";
+// import { handleLocalPiAgent } from "../agnets/handleLocalPiAgent";
 import { BrowserWindow } from "electron";
 // import { handleKimiCode } from "../agnets/handleKimiCode";
 // import { handleCodex } from "../agnets/handleCodex";
 import { handleCodexSDK } from "../agnets/handleCodexSDK";
 import { handleClaudeSession } from "../agnets/handleClaudeSession";
 import { handleKimiCodeSession } from "../agnets/handleKimiCodeSession";
-import { handleLocalOpenAISDK } from "../agnets/handleLocalOpenAISDK";
+import { handleLocalNodeLlamaSDK } from "../agnets/handleLocalNodeLlamaSDK";
 import { handlePIAgentSession } from "../agnets/handlePIAgentSession";
 
 export const createChatRouter = async ({
@@ -97,7 +97,7 @@ export const createChatRouter = async ({
             //     conversationId: req.body.conversationId,
             // });
             //
-            handleLocalOpenAISDK({
+            handleLocalNodeLlamaSDK({
                 workspacePath,
                 req,
                 res,

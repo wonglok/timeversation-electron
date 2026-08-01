@@ -135,76 +135,76 @@ export async function createOpenAiNodeLlamaRouter({
     // POST /chat — OpenAI-compatible chat completions (SSE streaming)
     // ------------------------------------------------------------------
 
-    router.post("/chat/completions", async (req, res) => {
-        const {
-            messages,
-            stream = true,
-            temperature,
-            max_tokens,
-            tools,
-            tool_choice,
-        } = (req.body ?? {}) as ChatCompletionCreateParams & {
-            messages: NonNullable<ChatCompletionCreateParams["messages"]>;
-        };
+    // router.post("/chat/completions", async (req, res) => {
+    //     const {
+    //         messages,
+    //         stream = true,
+    //         temperature,
+    //         max_tokens,
+    //         tools,
+    //         tool_choice,
+    //     } = (req.body ?? {}) as ChatCompletionCreateParams & {
+    //         messages: NonNullable<ChatCompletionCreateParams["messages"]>;
+    //     };
 
-        if (!messages || !Array.isArray(messages)) {
-            res.status(400).json({ error: "messages array is required" });
-            return;
-        }
+    //     if (!messages || !Array.isArray(messages)) {
+    //         res.status(400).json({ error: "messages array is required" });
+    //         return;
+    //     }
 
-        if (stream) {
-            // --- SSE streaming ---
-            res.setHeader("Content-Type", "text/event-stream");
-            res.setHeader("Cache-Control", "no-cache");
-            res.setHeader("Connection", "keep-alive");
-            res.setHeader("X-Accel-Buffering", "no");
-            res.flushHeaders();
+    //     if (stream) {
+    //         // --- SSE streaming ---
+    //         res.setHeader("Content-Type", "text/event-stream");
+    //         res.setHeader("Cache-Control", "no-cache");
+    //         res.setHeader("Connection", "keep-alive");
+    //         res.setHeader("X-Accel-Buffering", "no");
+    //         res.flushHeaders();
 
-            try {
-                const client = await getClient();
-                const result = await client.chat.completions.create({
-                    messages,
-                    stream: true,
-                    temperature,
-                    max_tokens,
-                    tools,
-                    tool_choice,
-                });
+    //         try {
+    //             const client = await getClient();
+    //             const result = await client.chat.completions.create({
+    //                 messages,
+    //                 stream: true,
+    //                 temperature,
+    //                 max_tokens,
+    //                 tools: tools || [],
+    //                 tool_choice: tool_choice || "auto",
+    //             });
 
-                for await (const chunk of result) {
-                    res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-                }
-                res.write("data: [DONE]\n\n");
-                res.end();
-            } catch (err) {
-                const message =
-                    err instanceof Error ? err.message : String(err);
-                res.write(
-                    `data: ${JSON.stringify({ error: { message } })}\n\n`,
-                );
-                res.write("data: [DONE]\n\n");
-                res.end();
-            }
-        } else {
-            // --- Non-streaming ---
-            try {
-                const client = await getClient();
-                const completion = await client.chat.completions.create({
-                    messages,
-                    stream: false,
-                    temperature,
-                    max_tokens,
-                    tools,
-                    tool_choice,
-                });
-                res.json(completion);
-            } catch (err) {
-                const message =
-                    err instanceof Error ? err.message : String(err);
-                res.status(500).json({ error: { message } });
-            }
-        }
-    });
+    //             for await (const chunk of result) {
+    //                 res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    //             }
+    //             res.write("data: [DONE]\n\n");
+    //             res.end();
+    //         } catch (err) {
+    //             const message =
+    //                 err instanceof Error ? err.message : String(err);
+    //             res.write(
+    //                 `data: ${JSON.stringify({ error: { message } })}\n\n`,
+    //             );
+    //             res.write("data: [DONE]\n\n");
+    //             res.end();
+    //         }
+    //     } else {
+    //         // --- Non-streaming ---
+    //         try {
+    //             const client = await getClient();
+    //             const completion = await client.chat.completions.create({
+    //                 messages,
+    //                 stream: false,
+    //                 temperature,
+    //                 max_tokens,
+    //                 tools: tools || [],
+    //                 tool_choice: tool_choice || "auto",
+    //             });
+    //             res.json(completion);
+    //         } catch (err) {
+    //             const message =
+    //                 err instanceof Error ? err.message : String(err);
+    //             res.status(500).json({ error: { message } });
+    //         }
+    //     }
+    // });
 
     // ------------------------------------------------------------------
     // GET /models — list downloaded .gguf files
@@ -262,64 +262,64 @@ export async function createOpenAiNodeLlamaRouter({
     // POST /models/load — explicitly load a model by filename
     // ------------------------------------------------------------------
 
-    router.post("/models/load", async (req, res) => {
-        const { filename } = req.body as { filename?: string };
+    // router.post("/models/load", async (req, res) => {
+    //     const { filename } = req.body as { filename?: string };
 
-        if (!filename) {
-            res.status(400).json({ error: "filename is required" });
-            return;
-        }
+    //     if (!filename) {
+    //         res.status(400).json({ error: "filename is required" });
+    //         return;
+    //     }
 
-        // Only allow a plain filename — strip any directory components
-        const safeName = path.basename(filename);
-        if (!safeName.endsWith(".gguf")) {
-            res.status(400).json({
-                error: "filename must be a .gguf file",
-            });
-            return;
-        }
+    //     // Only allow a plain filename — strip any directory components
+    //     const safeName = path.basename(filename);
+    //     if (!safeName.endsWith(".gguf")) {
+    //         res.status(400).json({
+    //             error: "filename must be a .gguf file",
+    //         });
+    //         return;
+    //     }
 
-        const modelPath = path.join(resolvedModelsDir, safeName);
-        if (!fs.existsSync(modelPath)) {
-            res.status(404).json({
-                error: `Model not found: ${safeName}`,
-            });
-            return;
-        }
+    //     const modelPath = path.join(resolvedModelsDir, safeName);
+    //     if (!fs.existsSync(modelPath)) {
+    //         res.status(404).json({
+    //             error: `Model not found: ${safeName}`,
+    //         });
+    //         return;
+    //     }
 
-        try {
-            // Dispose previous state
-            disposeState();
+    //     try {
+    //         // Dispose previous state
+    //         disposeState();
 
-            const llama = await getLlama();
-            const model = await llama.loadModel({ modelPath });
-            const contextSize = Number(process.env.LLM_CONTEXT_SIZE) || 128000;
-            const context = await model.createContext({ contextSize });
-            const sequence = context.getSequence();
+    //         const llama = await getLlama();
+    //         const model = await llama.loadModel({ modelPath });
+    //         const contextSize = Number(process.env.LLM_CONTEXT_SIZE) || 128000;
+    //         const context = await model.createContext({ contextSize });
+    //         const sequence = context.getSequence();
 
-            const config: OpenAIMockConfig = {
-                model,
-                context,
-                contextSequence: sequence,
-                modelName: path.basename(modelPath, ".gguf"),
-                systemPrompt:
-                    "You are a helpful assistant. Keep responses clear and concise.",
-            };
+    //         const config: OpenAIMockConfig = {
+    //             model,
+    //             context,
+    //             contextSequence: sequence,
+    //             modelName: path.basename(modelPath, ".gguf"),
+    //             systemPrompt:
+    //                 "You are a helpful assistant. Keep responses clear and concise.",
+    //         };
 
-            const client = new OpenAIMock(config);
-            state = { model, context, sequence, client, modelPath };
-            currentModelPath = modelPath;
+    //         const client = new OpenAIMock(config);
+    //         state = { model, context, sequence, client, modelPath };
+    //         currentModelPath = modelPath;
 
-            res.json({
-                ok: true,
-                modelName: safeName,
-                path: modelPath,
-            });
-        } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            res.status(500).json({ error: { message } });
-        }
-    });
+    //         res.json({
+    //             ok: true,
+    //             modelName: safeName,
+    //             path: modelPath,
+    //         });
+    //     } catch (err) {
+    //         const message = err instanceof Error ? err.message : String(err);
+    //         res.status(500).json({ error: { message } });
+    //     }
+    // });
 
     // ------------------------------------------------------------------
     // POST /models/check — check model compatibility with current system
