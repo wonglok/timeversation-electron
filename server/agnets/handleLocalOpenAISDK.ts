@@ -4,7 +4,12 @@ import path from "node:path";
 import { appendThreadMessage, getThreadMessages } from "../store/threadStore";
 import { OpenAI } from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/index.mjs";
-import { TOOLS, TOOL_NAMES, executeToolCall } from "./openai-tools";
+import {
+    TOOLS,
+    TOOL_NAMES,
+    TOOL_NAMES_DESC,
+    executeToolCall,
+} from "./openai-tools";
 import type { ToolCallResult } from "./openai-tools/types";
 
 // ============================================================================
@@ -167,7 +172,26 @@ export const handleLocalOpenAISDK = async ({
             const responseStream = await client.chat.completions.create({
                 model: `default`,
                 reasoning_effort: "high",
-                messages: conversationMessages,
+                messages: [
+                    {
+                        role: "system",
+                        content: `
+                        # Role
+                        You are an ai coding agent to help user.
+
+                        # Tools
+                        The tools you have are: 
+                        ${TOOL_NAMES_DESC.join("\n")}
+
+                        # Rule
+                        You workspace is at: ${sessionPath}
+                        You must only work at folder: ${sessionPath}
+                        `,
+                    },
+                    //
+                    ...conversationMessages,
+                    //
+                ],
                 tools: TOOLS,
                 stream: true,
             });

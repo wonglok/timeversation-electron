@@ -6,11 +6,7 @@
 // requests to the correct handler.
 // ============================================================================
 
-import type {
-    ToolCallRequest,
-    ToolCallResult,
-    ToolDefinition,
-} from "./types";
+import type { ToolCallRequest, ToolCallResult, ToolDefinition } from "./types";
 import { createPathResolver } from "./types";
 
 import { readToolDefinition, handleReadTool } from "./read";
@@ -54,6 +50,11 @@ export const TOOLS: ToolDefinition[] = [
 
 /** Ordered list of tool names (used in init events / debug output). */
 export const TOOL_NAMES: string[] = TOOLS.map((t) => t.function.name);
+
+/** Ordered list of tool names (used in init events / debug output). */
+export const TOOL_NAMES_DESC: string[] = TOOLS.map(
+    (t) => `${t.function.name}: ${t.function.description}`,
+);
 
 // ============================================================================
 // Dispatcher
@@ -104,10 +105,20 @@ export function executeToolCall(
                 return handleWriteTool(call.id, args, resolvePath);
 
             case "grep":
-                return handleGrepTool(call.id, args, workspaceRoot, resolvePath);
+                return handleGrepTool(
+                    call.id,
+                    args,
+                    workspaceRoot,
+                    resolvePath,
+                );
 
             case "find":
-                return handleFindTool(call.id, args, workspaceRoot, resolvePath);
+                return handleFindTool(
+                    call.id,
+                    args,
+                    workspaceRoot,
+                    resolvePath,
+                );
 
             case "ls":
                 return handleLsTool(call.id, args, resolvePath);
