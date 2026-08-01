@@ -5,13 +5,14 @@
 import { Router } from "express";
 import path from "node:path";
 import fs from "node:fs";
-import { app } from "electron";
+import { app, shell } from "electron";
 import {
     getLlama,
     createModelDownloader,
     readGgufFileInfo,
     GgufInsights,
 } from "node-llama-cpp";
+import { getLoadedModelPath } from "../agnets/handleLocalNodeLlamaSDK";
 
 // ============================================================================
 // Router factory
@@ -26,6 +27,78 @@ export async function createOpenAiNodeLlamaRouter({
     const resolvedModelsDir =
         modelsDir ??
         path.join(app.getPath("appData"), "timeversation", "ai-models");
+
+    // Track the active download AbortController so /cancel can stop it
+    let activeDownloadAbort: AbortController | null = null;
+
+    // ------------------------------------------------------------------
+    // GET /models — list downloaded .gguf files
+    // ------------------------------------------------------------------
+
+    router.get("/models", (_req, res) => {
+        try {
+            const files: Array<{ name: string; size: number; path: string }> =
+                [];
+
+            if (fs.existsSync(resolvedModelsDir)) {
+                const entries = fs.readdirSync(resolvedModelsDir, {
+                    withFileTypes: true,
+                });
+                for (const entry of entries) {
+                    if (entry.isFile() && entry.name.endsWith(".gguf")) {
+                        const fullPath = path.join(
+                            resolvedModelsDir,
+                            entry.name,
+                        );
+                        const stat = fs.statSync(fullPath);
+                        files.push({
+                            name: entry.name,
+                            size: stat.size,
+                            path: fullPath,
+                        });
+                    }
+                }
+            }
+
+            res.json({
+                modelsDir: resolvedModelsDir,
+                files,
+                loaded: getLoadedModelPath(),
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            res.status(500).json({ error: message });
+        }
+    });
+
+    // ------------------------------------------------------------------
+    // POST /models/cancel — cancel an active download
+    // ------------------------------------------------------------------
+
+    router.post("/models/cancel", (_req, res) => {
+        if (activeDownloadAbort) {
+            activeDownloadAbort.abort();
+            activeDownloadAbort = null;
+        }
+        res.json({ cancelled: true });
+    });
+
+    // ------------------------------------------------------------------
+    // POST /models/open-dir — open the models folder in the system file manager
+    // ------------------------------------------------------------------
+
+    router.post("/models/open-dir", (_req, res) => {
+        try {
+            if (!fs.existsSync(resolvedModelsDir)) {
+                fs.mkdirSync(resolvedModelsDir, { recursive: true });
+            }
+            shell.openPath(resolvedModelsDir);
+            res.json({ opened: resolvedModelsDir });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            res.status(500).json({ error: message });
+        }
+    });
 
     // ------------------------------------------------------------------
     // POST /models/pull — download model from Hugging Face (SSE progress)
@@ -51,6 +124,7 @@ export async function createOpenAiNodeLlamaRouter({
         res.flushHeaders();
 
         const abortController = new AbortController();
+        activeDownloadAbort = abortController;
 
         try {
             const downloader = await createModelDownloader({
@@ -81,6 +155,7 @@ export async function createOpenAiNodeLlamaRouter({
                 })}\n\n`,
             );
             res.end();
+            activeDownloadAbort = null;
         } catch (err) {
             if ((err as Error).name === "AbortError") {
                 res.write(
@@ -100,6 +175,7 @@ export async function createOpenAiNodeLlamaRouter({
                 );
             }
             res.end();
+            activeDownloadAbort = null;
         }
     });
 

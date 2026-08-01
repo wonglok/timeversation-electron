@@ -61,6 +61,11 @@ interface LlmState {
 let state: LlmState | null = null;
 let currentModelPath: string | null = null;
 
+/** Return the file path of the currently loaded model, or null if none. */
+export function getLoadedModelPath(): string | null {
+    return currentModelPath;
+}
+
 /** Dispose current model, context, and sequence; clear state */
 function disposeState() {
     if (!state) return;
