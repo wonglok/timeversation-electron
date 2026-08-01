@@ -3,8 +3,16 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { appendThreadMessage, getThreadMessages } from "../store/threadStore";
 import { OpenAI } from "openai";
-import { ChatCompletion } from "openai/resources/index.mjs";
-import { getConversationsDb } from "../routes/conversations";
+import type { ChatCompletionMessageParam } from "openai/resources/index.mjs";
+import { TOOLS, TOOL_NAMES, executeToolCall } from "./openai-tools";
+import type { ToolCallResult } from "./openai-tools/types";
+
+// ============================================================================
+// Agent-loop constants
+// ============================================================================
+
+/** Maximum number of LLM → tool → LLM turns before we force-stop. */
+const MAX_AGENT_TURNS = 25;
 
 // ============================================================================
 // SSE encoder helpers
@@ -35,19 +43,15 @@ function writeSSEEvent(
     }
 
     if (data === "") {
-        // Empty data — emit a single empty data line
         parts.push(encodeLine("data", ""));
     } else {
-        // Split on \n so each physical line gets its own `data:` prefix
         for (const line of data.split("\n")) {
             parts.push(encodeLine("data", `${line}\n`));
         }
     }
 
-    // Terminate the event
     parts.push(encoder.encode("\r\n"));
 
-    // Write as a single Buffer to avoid many small writes
     const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
     const merged = new Uint8Array(totalLen);
     let offset = 0;
@@ -59,7 +63,7 @@ function writeSSEEvent(
 }
 
 // ============================================================================
-// Codex SDK handler — uses @openai/codex-sdk to stream agent replies via SSE
+// Agent Loop handler
 // ============================================================================
 
 export const handleLocalOpenAISDK = async ({
@@ -80,7 +84,7 @@ export const handleLocalOpenAISDK = async ({
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
-        "X-Accel-Buffering": "no", // nginx buffering off
+        "X-Accel-Buffering": "no",
     });
 
     // Send an initial comment to flush headers
@@ -104,48 +108,10 @@ export const handleLocalOpenAISDK = async ({
     // Abort controller so we can cancel the turn when the client disconnects
     const ac = new AbortController();
 
-    // let thread;
-    // let threadId: string | null = null;
-
-    if (conversationId) {
-        try {
-            const db = await getConversationsDb(workspacePath);
-            const conv = db.data.conversations.find(
-                (c) => c.id === conversationId,
-            );
-            if (conv?.sessionId) {
-                // // Resume the existing Codex thread so context carries over
-                // thread = codex.resumeThread(conv.sessionId, {
-                //     workingDirectory: sessionPath,
-                //     skipGitRepoCheck: true,
-                // });
-                // threadId = conv.sessionId;
-                // writeSSEEvent(
-                //     res,
-                //     JSON.stringify({
-                //         type: "thread.started",
-                //         thread_id: threadId,
-                //     }),
-                // );
-            }
-        } catch (_) {
-            // DB read failed — fall through to start a fresh thread
-        }
-    }
-
-    // if (!thread) {
-    //     thread = codex.startThread({
-    //         workingDirectory: sessionPath,
-    //         skipGitRepoCheck: true,
-    //     });
-    // }
-
     // --- Persist user message ---
     if (conversationId) {
         appendThreadMessage(workspacePath, conversationId, "user", message);
     }
-
-    // // Accumulate assistant text for thread persistence
 
     // --- Client disconnect → abort turn ---
     req.on("close", () => {
@@ -164,79 +130,245 @@ export const handleLocalOpenAISDK = async ({
             workspacePath,
             conversationId as string,
         );
-        // console.log(msg);
 
-        let assistantText = "";
-        let thinkingText = "";
+        // --- Build the initial message list ---
+        const conversationMessages: ChatCompletionMessageParam[] = [
+            ...msg.map((r) => ({
+                content: r.content,
+                role: r.role as "user" | "assistant",
+            })),
+            { role: "user", content: message },
+        ];
 
-        // --- Step 1: Ask a question that triggers a tool call ---
-        const responseStream = await client.chat.completions.create({
-            model: `default`,
-            reasoning_effort: "high",
-            messages: [
-                ...msg.map((r) => {
-                    return {
-                        content: r.content,
-                        role: r.role,
-                    };
-                }),
-                { role: "user", content: message },
-            ],
-            stream: true,
-        });
+        let fullAssistantText = "";
 
-        for await (let item of responseStream) {
-            const delta = item.choices[0]?.delta as
-                | Record<string, any>
-                | undefined;
+        // --- Write init event ---
+        writeSSEEvent(
+            res,
+            JSON.stringify({
+                type: "system",
+                subtype: "init",
+                session_path: sessionPath,
+                workspace_path: workspacePath || sessionPath,
+                tools: TOOL_NAMES,
+            }),
+        );
 
-            // Handle thinking/reasoning tokens (e.g. DeepSeek, o1-style models)
-            if (delta?.reasoning_content) {
-                thinkingText += delta.reasoning_content;
+        // =====================================================================
+        // Agent Loop
+        // =====================================================================
+
+        for (let turn = 0; turn < MAX_AGENT_TURNS; turn++) {
+            if (ac.signal.aborted) break;
+
+            writeSSEEvent(
+                res,
+                JSON.stringify({ type: "agent_turn", turn }),
+            );
+
+            // --- Stream the LLM response ---
+            const responseStream = await client.chat.completions.create({
+                model: `default`,
+                reasoning_effort: "high",
+                messages: conversationMessages,
+                tools: TOOLS,
+                stream: true,
+            });
+
+            let turnText = "";
+
+            // Accumulate tool-call fragments by index
+            const toolCallsByIndex = new Map<
+                number,
+                {
+                    id: string;
+                    type: "function";
+                    function: { name: string; arguments: string };
+                }
+            >();
+
+            for await (const item of responseStream) {
+                if (ac.signal.aborted) break;
+
+                const delta = item.choices[0]?.delta as
+                    | Record<string, any>
+                    | undefined;
+
+                // --- Thinking / reasoning tokens ---
+                if (delta?.reasoning_content) {
+                    writeSSEEvent(
+                        res,
+                        JSON.stringify({
+                            type: "thinking",
+                            content: delta.reasoning_content,
+                        }),
+                    );
+                }
+
+                // --- Text content ---
+                if (delta?.content) {
+                    turnText += delta.content;
+                    writeSSEEvent(
+                        res,
+                        JSON.stringify({
+                            type: "text",
+                            content: delta.content,
+                        }),
+                    );
+                }
+
+                // --- Tool-call deltas ---
+                if (delta?.tool_calls) {
+                    for (const tc of delta.tool_calls) {
+                        const idx = tc.index as number;
+                        const existing = toolCallsByIndex.get(idx) ?? {
+                            id: "",
+                            type: "function" as const,
+                            function: { name: "", arguments: "" },
+                        };
+
+                        if (tc.id) existing.id = tc.id;
+                        if (tc.function?.name)
+                            existing.function.name += tc.function.name;
+                        if (tc.function?.arguments)
+                            existing.function.arguments +=
+                                tc.function.arguments;
+
+                        toolCallsByIndex.set(idx, existing);
+                    }
+                }
+            }
+
+            if (ac.signal.aborted) break;
+
+            // --- Collect completed tool calls (sorted by index) ---
+            const toolCalls = Array.from(toolCallsByIndex.entries())
+                .sort(([a], [b]) => a - b)
+                .map(([, tc]) => ({
+                    id: tc.id,
+                    type: tc.type,
+                    function: {
+                        name: tc.function.name,
+                        arguments: tc.function.arguments,
+                    },
+                }));
+
+            // --- Branch: no tool calls → final response ---
+            if (toolCalls.length === 0) {
+                fullAssistantText += turnText;
+
+                conversationMessages.push({
+                    role: "assistant",
+                    content: turnText || null,
+                });
+
+                if (conversationId && fullAssistantText.trim()) {
+                    await appendThreadMessage(
+                        workspacePath,
+                        conversationId,
+                        "assistant",
+                        fullAssistantText.trim(),
+                    );
+                }
+
                 writeSSEEvent(
                     res,
                     JSON.stringify({
-                        type: "thinking",
-                        content: delta.reasoning_content,
+                        type: "agent_done",
+                        total_turns: turn + 1,
+                    }),
+                );
+                writeSSEEvent(res, "[DONE]");
+                res.end();
+                return;
+            }
+
+            // --- Branch: tool calls present → execute & loop ---
+            fullAssistantText += turnText;
+
+            // Forward tool-call events to the client
+            for (const tc of toolCalls) {
+                writeSSEEvent(
+                    res,
+                    JSON.stringify({
+                        type: "tool_call",
+                        tool_call_id: tc.id,
+                        name: tc.function.name,
+                        arguments: tc.function.arguments,
                     }),
                 );
             }
 
-            // Handle regular text content
-            if (delta?.content) {
-                assistantText += delta.content;
+            // Build the assistant message with tool calls
+            conversationMessages.push({
+                role: "assistant",
+                content: turnText || null,
+                tool_calls: toolCalls,
+            } as ChatCompletionMessageParam);
+
+            // Execute each tool call and collect results
+            const toolResults: ToolCallResult[] = [];
+            for (const tc of toolCalls) {
+                const result = executeToolCall(
+                    {
+                        id: tc.id,
+                        name: tc.function.name,
+                        arguments: tc.function.arguments,
+                    },
+                    workspacePath,
+                    sessionPath,
+                );
+
+                toolResults.push(result);
+
                 writeSSEEvent(
                     res,
                     JSON.stringify({
-                        type: "text",
-                        content: delta.content,
+                        type: "tool_result",
+                        tool_call_id: result.tool_call_id,
+                        content: result.content,
                     }),
                 );
+            }
+
+            // Append tool-result messages to the conversation
+            for (const tr of toolResults) {
+                conversationMessages.push({
+                    role: "tool",
+                    tool_call_id: tr.tool_call_id,
+                    content: tr.content,
+                } as ChatCompletionMessageParam);
             }
         }
 
-        // --- Persist assistant text ---
-        if (conversationId && assistantText.trim()) {
+        // --- Max turns reached ---
+        if (conversationId && fullAssistantText.trim()) {
             await appendThreadMessage(
                 workspacePath,
                 conversationId,
                 "assistant",
-                assistantText.trim(),
+                fullAssistantText.trim(),
             );
         }
 
-        // Signal end of stream
+        writeSSEEvent(
+            res,
+            JSON.stringify({
+                type: "agent_done",
+                total_turns: MAX_AGENT_TURNS,
+                warning: "Max agent turns reached — loop terminated.",
+            }),
+        );
         writeSSEEvent(res, "[DONE]");
     } catch (err: any) {
         if (err.name === "AbortError") {
-            // Client disconnected — graceful stop
             writeSSEEvent(res, "[DONE]");
         } else {
             writeSSEEvent(
                 res,
                 JSON.stringify({
                     type: "error",
-                    message: err.message ?? "Codex SDK stream failed",
+                    message: err.message ?? "Agent loop stream failed",
                 }),
                 "error",
             );

@@ -7,13 +7,13 @@ import type { ComponentType } from "react";
 // Colorful brand icons
 import ClaudeCodeColor from "@lobehub/icons/es/ClaudeCode/components/Color";
 import CodexColor from "@lobehub/icons/es/Codex/components/Color";
-import QwenColor from "@lobehub/icons/es/Qwen/components/Color";
+// import QwenColor from "@lobehub/icons/es/Qwen/components/Color";
 // import GeminiCLIColor from "@lobehub/icons/es/GeminiCLI/components/Color";
 
 // Monochrome brand icons (no Color variant in package)
 import OpenCodeIcon from "@lobehub/icons/es/OpenCode";
 import PiIcon from "@lobehub/icons/es/Pi";
-import CursorIcon from "@lobehub/icons/es/Cursor";
+// import CursorIcon from "@lobehub/icons/es/Cursor";
 
 // Custom SVG icons
 import { KimiIcon } from "./icons/KimiIcon";
@@ -141,7 +141,18 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
     },
 
     {
-        name: "Timeversation Agent",
+        name: "Kimi Code",
+        slug: "kimi-code",
+        cliName: "kimi",
+        detectionArgs: ["--version"],
+        versionRegex: /(\d+\.\d+\.\d+)/,
+        description: "Moonshot AI's Kimi-powered coding agent",
+        homepage: "https://github.com/MoonshotAI/kimi-code",
+        icon: KimiIcon,
+    },
+
+    {
+        name: "Local Agent",
         slug: "local",
         cliName: "local",
         detectionArgs: ["--version"],
@@ -166,17 +177,6 @@ export const BUILTIN_AGENTS: AgentDefinition[] = [
                 </svg>
             );
         },
-    },
-
-    {
-        name: "Kimi Code",
-        slug: "kimi-code",
-        cliName: "kimi",
-        detectionArgs: ["--version"],
-        versionRegex: /(\d+\.\d+\.\d+)/,
-        description: "Moonshot AI's Kimi-powered coding agent",
-        homepage: "https://github.com/MoonshotAI/kimi-code",
-        icon: KimiIcon,
     },
 
     // {
