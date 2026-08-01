@@ -1,7 +1,7 @@
 import { Router } from "express";
 // import { handleClaude } from "../agnets/handleClaude";
 import { handleOpenCode } from "../agnets/handleOpenCode";
-// import { handleCodex } from "../agnets/handleCodex";
+import { handleLocalPiAgent } from "../agnets/handleLocalPiAgent";
 import { BrowserWindow } from "electron";
 // import { handleKimiCode } from "../agnets/handleKimiCode";
 // import { handleCodex } from "../agnets/handleCodex";
@@ -87,6 +87,16 @@ export const createChatRouter = async ({
                 conversationId: req.body.conversationId,
             });
         } else if (message && slug === "local") {
+            //
+            //
+            // handleLocalPiAgent({
+            //     workspacePath,
+            //     req,
+            //     res,
+            //     message,
+            //     conversationId: req.body.conversationId,
+            // });
+            //
             handleLocalOpenAISDK({
                 workspacePath,
                 req,

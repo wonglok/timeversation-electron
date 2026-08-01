@@ -1,12 +1,12 @@
 import {
-    LlamaChatSession,
-    defineChatSessionFunction,
-    isChatModelResponseFunctionCall,
+    LlamaChat,
     type LlamaModel,
     type LlamaContext,
     type LlamaContextSequence,
-    type ChatSessionModelFunctions,
-    type ChatSessionModelFunction,
+    type ChatHistoryItem,
+    type ChatModelResponse,
+    type ChatModelFunctionCall,
+    type ChatModelFunctions,
 } from "node-llama-cpp";
 
 // ============================================================================
@@ -23,105 +23,31 @@ function randomHex(len: number): string {
 }
 
 // ============================================================================
-// Push-buffer — bridges callback-driven chunks to an async iterator
-// ============================================================================
-
-class ChunkBuffer {
-    private _buffer: Array<{ text: string; done: boolean }> = [];
-    private _waiter: { resolve: () => void } | null = null;
-    private _closed = false;
-
-    push(text: string): void {
-        if (this._closed) return;
-        this._buffer.push({ text, done: false });
-        this._waiter?.resolve();
-    }
-
-    close(): void {
-        if (this._closed) return;
-        this._buffer.push({ text: "", done: true });
-        this._waiter?.resolve();
-    }
-
-    async *iterate(): AsyncGenerator<{ text: string; done: boolean }> {
-        let i = 0;
-        while (true) {
-            while (i < this._buffer.length) {
-                const item = this._buffer[i++]!;
-                yield item;
-                if (item.done) return;
-            }
-            if (this._closed) return;
-            await new Promise<void>((r) => {
-                this._waiter = { resolve: r };
-            });
-            this._waiter = null;
-        }
-    }
-}
-
-// ============================================================================
 // Tool helpers
 // ============================================================================
 
 /**
  * Convert OpenAI-format tool definitions into `node-llama-cpp` model functions.
  *
- * Each tool's `function.name` is used as the key. Handlers are looked up from
- * `toolHandlers` by name; tools without a matching handler get a stub that
- * returns an error object so the model can react gracefully.
+ * `ChatModelFunctions` (used by `LlamaChat.generateResponse`) has no `handler`
+ * field — just `description` and `params`.  Function execution is done by the
+ * caller, which matches the external agent-loop pattern where the client
+ * executes tools and sends results back.
  */
 function convertOpenAiToolsToModelFunctions(
     tools: ChatCompletionTool[],
-    toolHandlers?: Record<
-        string,
-        (args: Record<string, unknown>) => unknown | Promise<unknown>
-    >,
-): ChatSessionModelFunctions {
-    const functions: Record<string, ChatSessionModelFunction<any>> = {};
+): ChatModelFunctions {
+    const functions: Record<string, { description?: string; params?: any }> = {};
 
     for (const tool of tools) {
         if (tool.type !== "function") continue;
-
-        const name = tool.function.name;
-        const description = tool.function.description;
-        const handler = toolHandlers?.[name];
-
-        // OpenAI tool `parameters` is JSON Schema — runtime-compatible with
-        // GbnfJsonSchema but TS types differ, so cast through `any`.
-        functions[name] = defineChatSessionFunction({
-            description,
-            params: tool.function.parameters,
-            handler: handler
-                ? (args: any) => handler(args as Record<string, unknown>)
-                : (args: any) => ({
-                      error: `No handler registered for tool "${name}".`,
-                      calledWith: args,
-                  }),
-        } as any);
+        functions[tool.function.name] = {
+            description: tool.function.description,
+            params: tool.function.parameters as any,
+        };
     }
 
     return functions;
-}
-
-/** Extract tool calls from the last model response in chat history. */
-function extractToolCallsFromHistory(
-    session: LlamaChatSession,
-): ChatCompletionMessageToolCall[] {
-    const history = session.getChatHistory();
-    const lastModel = [...history].reverse().find((h) => h.type === "model");
-    if (!lastModel || lastModel.type !== "model") return [];
-
-    return lastModel.response
-        .filter(isChatModelResponseFunctionCall)
-        .map((fc) => ({
-            id: `call_${randomHex(24)}`,
-            type: "function" as const,
-            function: {
-                name: fc.name,
-                arguments: JSON.stringify(fc.params),
-            },
-        }));
 }
 
 // ============================================================================
@@ -134,12 +60,19 @@ export interface OpenAIMockConfig {
     contextSequence: LlamaContextSequence;
     /** Model name reported in API responses (defaults to `"local-model"`). */
     modelName?: string;
-    chatSession?: LlamaChatSession;
+    /** Pre-built LlamaChat instance. Takes precedence over contextSequence. */
+    llamaChat?: LlamaChat;
     systemPrompt?: string;
-    modelFunctions?: ChatSessionModelFunctions;
     /**
-     * Handlers keyed by tool/function name. Used when `tools` are passed
-     * to `create()` and a matching handler needs to execute.
+     * Optional model functions merged with `tools` from each `create()` call.
+     */
+    modelFunctions?: ChatModelFunctions;
+    /**
+     * Handlers keyed by tool/function name.  When provided, the mock runs the
+     * full function-calling loop **internally** and never returns `tool_calls`
+     * to the client.  When omitted (default), function calls are returned to
+     * the client so it can execute tools and feed results back in the next
+     * request.
      */
     toolHandlers?: Record<
         string,
@@ -160,33 +93,19 @@ export interface ChatCompletionTool {
  * A single-item tool definition where the JSON schema and the handler
  * live together — no need to keep a separate `tools` array and
  * `toolHandlers` map in sync by name.
- *
- * Use {@link defineTool} to create one, then {@link collectTools} to
- * split into the parts the adapter expects.
  */
 export interface ToolDefinition<
     Args extends Record<string, unknown> = Record<string, unknown>,
 > {
-    /** Function name the model sees (must be a valid identifier). */
     name: string;
-    /** Natural-language description so the model knows when to call it. */
     description?: string;
-    /** JSON Schema for the function parameters (optional). */
     parameters?: Record<string, unknown>;
-    /** The implementation. Called when the model invokes this tool. */
     handler: (args: Args) => unknown | Promise<unknown>;
 }
 
-/**
- * The result of {@link defineTool} — carries both the OpenAI-format
- * tool definition and the handler, keyed by name.
- */
 export interface DefinedTool {
-    /** The OpenAI-format tool descriptor (for `tools` array in create params). */
     definition: ChatCompletionTool;
-    /** The handler function. */
     handler: (args: Record<string, unknown>) => unknown | Promise<unknown>;
-    /** The tool name (same as `definition.function.name`). */
     name: string;
 }
 
@@ -214,15 +133,7 @@ export interface ChatCompletionCreateParams {
     top_p?: number;
     frequency_penalty?: number;
     presence_penalty?: number;
-    /** OpenAI-style tool definitions. Converted to model functions internally. */
     tools?: ChatCompletionTool[];
-    /**
-     * Controls which (if any) tool is called.
-     * - `"auto"` (default) — the model decides
-     * - `"none"` — no tools are used
-     * - `"required"` — the model must call a tool
-     * - `{ type: "function", function: { name } }` — force a specific tool
-     */
     tool_choice?:
         | "auto"
         | "none"
@@ -272,15 +183,9 @@ export interface ChatCompletionChunk {
 }
 
 // ============================================================================
-// defineTool + collectTools — co-located schema + handler
+// defineTool + collectTools
 // ============================================================================
 
-/**
- * Define a tool where the JSON schema and handler live as a single item.
- *
- * Use {@link collectTools} to split a set of defined tools into the
- * `tools` array and `toolHandlers` map that the adapter consumes.
- */
 export function defineTool<
     Args extends Record<string, unknown> = Record<string, unknown>,
 >(tool: ToolDefinition<Args>): DefinedTool {
@@ -300,37 +205,14 @@ export function defineTool<
     };
 }
 
-/** Result of {@link collectTools}. */
 export interface CollectedTools {
-    /** Ready to pass as `tools` to `client.chat.completions.create()`. */
     tools: ChatCompletionTool[];
-    /** Ready to pass as `toolHandlers` to `OpenAIMock` config or merge at call-site. */
     toolHandlers: Record<
         string,
         (args: Record<string, unknown>) => unknown | Promise<unknown>
     >;
 }
 
-/**
- * Split an array of {@link DefinedTool} items into the separate
- * `tools` list and `toolHandlers` map that the adapter expects.
- *
- * ```ts
- * const weather = defineTool({ name: "get_weather", ..., handler });
- * const calc    = defineTool({ name: "calculate", ..., handler });
- *
- * const collected = collectTools(weather, calc);
- *
- * // Pass to config:
- * const client = new OpenAIMock({ ...config, toolHandlers: collected.toolHandlers });
- *
- * // Pass to create():
- * const res = await client.chat.completions.create({
- *     messages: [...],
- *     tools: collected.tools,
- * });
- * ```
- */
 export function collectTools(...defined: DefinedTool[]): CollectedTools {
     return {
         tools: defined.map((d) => d.definition),
@@ -338,6 +220,16 @@ export function collectTools(...defined: DefinedTool[]): CollectedTools {
             defined.map((d) => [d.name, d.handler]),
         ),
     };
+}
+
+// ============================================================================
+// Internal: generation result
+// ============================================================================
+
+interface GenerationResult {
+    content: string;
+    toolCalls: ChatCompletionMessageToolCall[] | undefined;
+    finishReason: ChatCompletionChoice["finish_reason"];
 }
 
 // ============================================================================
@@ -349,47 +241,24 @@ export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> 
     private readonly _id: string;
     private readonly _model: string;
     private readonly _created: number;
+    private readonly _api: ChatCompletionsAPI;
+    private readonly _functions: ChatModelFunctions | undefined;
+    private _iterate: AsyncGenerator<ChatCompletionChunk>;
 
     constructor(
-        chatSession: LlamaChatSession,
-        prompt: string,
+        api: ChatCompletionsAPI,
         model: string,
-        modelFunctions?: ChatSessionModelFunctions,
+        functions: ChatModelFunctions | undefined,
     ) {
+        this._api = api;
         this._id = `chatcmpl-${randomHex(29)}`;
         this._model = model;
         this._created = Math.floor(Date.now() / 1000);
-
-        const buffer = new ChunkBuffer();
-
-        const generation = chatSession
-            .prompt(prompt, {
-                signal: this.controller.signal,
-                stopOnAbortSignal: true,
-                functions: modelFunctions as ChatSessionModelFunctions,
-                onTextChunk(text) {
-                    buffer.push(text);
-                },
-            })
-            .then(() => buffer.close())
-            .catch((err) => {
-                if (err !== this.controller.signal?.reason) {
-                    buffer.close();
-                    throw err;
-                }
-                buffer.close();
-            });
-
-        this._iterate = this._iterateImpl(buffer, generation, chatSession);
+        this._functions = functions;
+        this._iterate = this._iterateImpl();
     }
 
-    private _iterate: AsyncGenerator<ChatCompletionChunk>;
-
-    private async *_iterateImpl(
-        buffer: ChunkBuffer,
-        generation: Promise<void>,
-        session: LlamaChatSession,
-    ): AsyncGenerator<ChatCompletionChunk> {
+    private async *_iterateImpl(): AsyncGenerator<ChatCompletionChunk> {
         // First chunk carries the role.
         yield {
             id: this._id,
@@ -401,10 +270,46 @@ export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> 
             ],
         };
 
-        // Emit text chunks as they arrive.
-        for await (const { text, done } of buffer.iterate()) {
-            if (done) break;
-            if (text.length === 0) continue;
+        try {
+            const result = await this._api._runGenerationLoop(
+                this._functions,
+            );
+
+            // Yield accumulated text.
+            if (result.content) {
+                yield {
+                    id: this._id,
+                    object: "chat.completion.chunk",
+                    created: this._created,
+                    model: this._model,
+                    choices: [
+                        {
+                            index: 0,
+                            delta: { content: result.content },
+                            finish_reason: null,
+                        },
+                    ],
+                };
+            }
+
+            // Yield tool calls if present.
+            if (result.toolCalls && result.toolCalls.length > 0) {
+                yield {
+                    id: this._id,
+                    object: "chat.completion.chunk",
+                    created: this._created,
+                    model: this._model,
+                    choices: [
+                        {
+                            index: 0,
+                            delta: { tool_calls: result.toolCalls },
+                            finish_reason: null,
+                        },
+                    ],
+                };
+            }
+
+            // Final chunk with finish_reason.
             yield {
                 id: this._id,
                 object: "chat.completion.chunk",
@@ -413,21 +318,13 @@ export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> 
                 choices: [
                     {
                         index: 0,
-                        delta: { content: text },
-                        finish_reason: null,
+                        delta: {},
+                        finish_reason: result.finishReason,
                     },
                 ],
             };
-        }
-
-        // Wait for generation to finish (throws if it failed).
-        await generation;
-
-        // Inspect history for tool calls.
-        const toolCalls = extractToolCallsFromHistory(session);
-
-        if (toolCalls.length > 0) {
-            // Emit a chunk with tool_calls before the terminal chunk.
+        } catch (err) {
+            // Emit error then re-throw
             yield {
                 id: this._id,
                 object: "chat.completion.chunk",
@@ -436,27 +333,13 @@ export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> 
                 choices: [
                     {
                         index: 0,
-                        delta: { tool_calls: toolCalls },
-                        finish_reason: null,
+                        delta: {},
+                        finish_reason: "stop",
                     },
                 ],
             };
+            throw err;
         }
-
-        // Final chunk with finish_reason.
-        yield {
-            id: this._id,
-            object: "chat.completion.chunk",
-            created: this._created,
-            model: this._model,
-            choices: [
-                {
-                    index: 0,
-                    delta: {},
-                    finish_reason: toolCalls.length > 0 ? "tool_calls" : "stop",
-                },
-            ],
-        };
     }
 
     [Symbol.asyncIterator](): AsyncIterator<ChatCompletionChunk> {
@@ -499,136 +382,392 @@ export class ChatCompletionStream implements AsyncIterable<ChatCompletionChunk> 
 }
 
 // ============================================================================
-// Completions API
+// ChatCompletionsAPI
 // ============================================================================
 
 export class ChatCompletionsAPI {
-    private _session: LlamaChatSession;
+    private _llamaChat: LlamaChat;
     private _contextSequence: LlamaContextSequence;
     private _modelName: string;
-    private _modelFunctions?: ChatSessionModelFunctions;
+
+    // --- Persistent chat state (survives across requests) ---
+    private _chatHistory: ChatHistoryItem[] = [];
+    private _contextWindow: ChatHistoryItem[] | undefined;
+    private _lastShiftMetadata: any;
+
+    // --- Message tracking ---
+    // Counts of user/tool messages already incorporated into `_chatHistory`.
+    // Reset when the last user-message content changes (signals a new
+    // conversation or multi-turn follow-up).
+    private _trackedUserCount = 0;
+    private _trackedToolCount = 0;
+    private _lastTrackedUserContent: string | null = null;
+
+    // --- Tool handling ---
     private _toolHandlers?: Record<
         string,
         (args: Record<string, unknown>) => unknown | Promise<unknown>
     >;
-    private _promptedMessageCount = 0;
+
+    // Map of generated call IDs → {name, params} for matching tool results.
+    private _generatedCalls: Map<
+        string,
+        { name: string; params: any }
+    > = new Map();
+
+    // Config-level model functions (backward compat).
+    private _modelFunctions?: ChatModelFunctions;
 
     constructor(
-        session: LlamaChatSession,
+        llamaChat: LlamaChat,
         contextSequence: LlamaContextSequence,
         modelName: string,
-        modelFunctions?: ChatSessionModelFunctions,
+        modelFunctions?: ChatModelFunctions,
         toolHandlers?: Record<
             string,
             (args: Record<string, unknown>) => unknown | Promise<unknown>
         >,
+        systemPrompt?: string,
     ) {
-        this._session = session;
+        this._llamaChat = llamaChat;
         this._contextSequence = contextSequence;
         this._modelName = modelName;
         this._modelFunctions = modelFunctions;
         this._toolHandlers = toolHandlers;
+
+        if (systemPrompt) {
+            this._chatHistory.push({ type: "system", text: systemPrompt });
+        }
     }
 
-    /** Track how many tool-call turns we've consumed so we don't re-prompt stale tool results. */
-    private _promptedToolCallCount = 0;
+    // =========================================================================
+    // Message syncing
+    // =========================================================================
 
     /**
-     * Extract the next prompt from an OpenAI-format messages array.
+     * Incorporate new messages from an OpenAI-format messages array into the
+     * internal chat history.
      *
-     * Two modes:
-     * 1. New user messages present → extract the last user message as the prompt.
-     * 2. No new user messages, but tool results are present (agent loop fed
-     *    tool outputs back without a new user message) → format the tool
-     *    results as a continuation prompt so the model can respond to them.
+     * Returns any **new** tool-result messages that need to be applied as
+     * function-call results before the next generation round.
      */
-    private _extractPrompt(messages: ChatCompletionMessage[]): string | null {
+    private _syncMessages(
+        messages: ChatCompletionMessage[],
+    ): ChatCompletionMessage[] {
         const userMessages = messages.filter((m) => m.role === "user");
-
-        // --- Path 1: there are new user messages ---
-        if (userMessages.length > this._promptedMessageCount) {
-            const newMessages = userMessages.slice(this._promptedMessageCount);
-            this._promptedMessageCount += newMessages.length;
-            const last = newMessages[newMessages.length - 1]!;
-            return last.content;
-        }
-
-        // --- Path 2: no new user messages — check for pending tool results ---
-        // The agent loop appends assistant (with tool_calls) + tool messages
-        // after each turn. Count tool messages to detect new tool turns.
         const toolMessages = messages.filter((m) => m.role === "tool");
 
-        if (toolMessages.length > this._promptedToolCallCount) {
-            // New tool results have arrived — build a continuation prompt.
-            const newToolMessages = toolMessages.slice(
-                this._promptedToolCallCount,
-            );
-            this._promptedToolCallCount = toolMessages.length;
+        const lastUser = userMessages[userMessages.length - 1] ?? null;
 
-            const parts = newToolMessages.map((tm) => {
-                const parsed = (() => {
-                    try {
-                        return JSON.parse(tm.content ?? "{}");
-                    } catch {
-                        return tm.content;
-                    }
-                })();
-                return `Tool result (${tm.tool_call_id}): ${typeof parsed === "string" ? parsed : JSON.stringify(parsed)}`;
+        // --- Detect conversation boundary ---
+        // When the last user-message content changes, re-anchor the counters
+        // so the new user message is picked up.  Chat history is NOT cleared
+        // here — call `resetHistory()` for a full context wipe.
+        if (lastUser && lastUser.content !== this._lastTrackedUserContent) {
+            this._trackedUserCount = 0;
+            this._trackedToolCount = 0;
+        }
+        this._lastTrackedUserContent = lastUser?.content ?? null;
+
+        // --- Push new user messages into chat history ---
+        for (let i = this._trackedUserCount; i < userMessages.length; i++) {
+            const msg = userMessages[i]!;
+            this._chatHistory.push({
+                type: "user",
+                text: msg.content ?? "",
             });
+        }
+        this._trackedUserCount = userMessages.length;
 
-            if (parts.length > 0) {
-                // Also update the user-message count so future calls with
-                // the same tool results don't re-enter this path.
-                this._promptedMessageCount = userMessages.length;
-                return (
-                    "The tool results are listed below. Continue with your response " +
-                    "based on these results. If the task is complete, summarize what was done.\n\n" +
-                    parts.join("\n\n")
-                );
+        // --- Handle system messages (dedup, insert at front) ---
+        const systemMessages = messages.filter((m) => m.role === "system");
+        for (const msg of systemMessages) {
+            const text = msg.content ?? "";
+            if (
+                !this._chatHistory.some(
+                    (h) => h.type === "system" && h.text === text,
+                )
+            ) {
+                this._chatHistory.unshift({ type: "system", text });
             }
         }
 
-        // --- Path 3: nothing new at all ---
-        return null;
+        // --- Collect new tool messages ---
+        const newToolMessages = toolMessages.slice(this._trackedToolCount);
+        this._trackedToolCount = toolMessages.length;
+
+        return newToolMessages;
     }
+
+    /**
+     * Apply tool results from the client back into the chat history so the
+     * model can continue generation.
+     *
+     * Each tool message is matched to a previously generated function call
+     * via `tool_call_id`.  The result is pushed as a `ChatModelFunctionCall`
+     * into a new model-response slot.
+     */
+    private _applyToolResults(toolMessages: ChatCompletionMessage[]): void {
+        if (toolMessages.length === 0) return;
+
+        // Find the last model response in chat history.  Results are appended
+        // to this same slot (matching the reference pattern) rather than
+        // pushed into a new model response, so the model sees function calls
+        // and their results as a contiguous assistant turn.
+        let lastModelIdx = -1;
+        for (let i = this._chatHistory.length - 1; i >= 0; i--) {
+            if (this._chatHistory[i]!.type === "model") {
+                lastModelIdx = i;
+                break;
+            }
+        }
+
+        if (lastModelIdx === -1) {
+            // No model response yet — create one.
+            this._chatHistory.push({ type: "model", response: [] });
+            lastModelIdx = this._chatHistory.length - 1;
+        }
+
+        const modelResponse = this._chatHistory[lastModelIdx]! as ChatModelResponse;
+
+        for (const tm of toolMessages) {
+            const callInfo = this._generatedCalls.get(tm.tool_call_id ?? "");
+
+            let parsed: unknown;
+            try {
+                parsed = JSON.parse(tm.content ?? "{}");
+            } catch {
+                parsed = tm.content;
+            }
+
+            const fcItem: ChatModelFunctionCall = {
+                type: "functionCall",
+                name: callInfo?.name ?? "unknown",
+                params: callInfo?.params ?? {},
+                result: parsed,
+            };
+
+            modelResponse.response.push(fcItem);
+        }
+
+        // Clear matched calls from the tracking map.
+        for (const tm of toolMessages) {
+            this._generatedCalls.delete(tm.tool_call_id ?? "");
+        }
+    }
+
+    // =========================================================================
+    // Function resolution
+    // =========================================================================
 
     /** Merge config-level model functions with per-request OpenAI tools. */
     private _resolveFunctions(params: ChatCompletionCreateParams): {
-        functions: ChatSessionModelFunctions | undefined;
-        toolsWereRequested: boolean;
+        functions: ChatModelFunctions | undefined;
     } {
         const toolChoice = params.tool_choice ?? "auto";
 
-        // "none" — strip all functions regardless of what was passed.
         if (toolChoice === "none") {
-            return { functions: undefined, toolsWereRequested: false };
+            return { functions: undefined };
         }
 
         const fromTools =
             params.tools && params.tools.length > 0
-                ? convertOpenAiToolsToModelFunctions(
-                      params.tools,
-                      this._toolHandlers,
-                  )
+                ? convertOpenAiToolsToModelFunctions(params.tools)
                 : undefined;
 
-        // Merge: per-request tools take precedence over config-level functions.
-        const merged: Record<string, ChatSessionModelFunction<any>> = {
-            ...((this._modelFunctions as
-                | Record<string, ChatSessionModelFunction<any>>
-                | undefined) ?? {}),
-            ...((fromTools as
-                | Record<string, ChatSessionModelFunction<any>>
-                | undefined) ?? {}),
+        const merged: Record<string, any> = {
+            ...((this._modelFunctions as Record<string, any>) ?? {}),
+            ...((fromTools as Record<string, any>) ?? {}),
         };
-
-        const hasFunctions = Object.keys(merged).length > 0;
 
         return {
-            functions: hasFunctions ? merged : undefined,
-            toolsWereRequested: params.tools != null && params.tools.length > 0,
+            functions:
+                Object.keys(merged).length > 0
+                    ? (merged as ChatModelFunctions)
+                    : undefined,
         };
     }
+
+    // =========================================================================
+    // Generation loop
+    // =========================================================================
+
+    /**
+     * Run the function-calling generation loop.
+     *
+     * When `toolHandlers` are configured the loop runs to completion
+     * (executing handlers internally); otherwise it returns after the first
+     * `generateResponse()` call so the client can execute tools.
+     *
+     * @internal — exposed for ChatCompletionStream use.
+     */
+    async _runGenerationLoop(
+        functions: ChatModelFunctions | undefined,
+    ): Promise<GenerationResult> {
+        let fullContent = "";
+        const allToolCalls: ChatCompletionMessageToolCall[] = [];
+
+        const hasHandlers =
+            this._toolHandlers != null &&
+            Object.keys(this._toolHandlers).length > 0;
+
+        // When handlers are available, limit iterations to prevent loops.
+        const maxIterations = hasHandlers ? 100 : 1;
+
+        for (let iter = 0; iter < maxIterations; iter++) {
+            // Ensure a model response slot exists for the model to complete.
+            if (
+                this._chatHistory.length === 0 ||
+                this._chatHistory[this._chatHistory.length - 1]!.type !==
+                    "model"
+            ) {
+                this._chatHistory.push({ type: "model", response: [] });
+            }
+
+            const res = await this._llamaChat.generateResponse(
+                this._chatHistory,
+                {
+                    functions: functions as any,
+                    contextShift: {
+                        lastEvaluationMetadata: this._lastShiftMetadata,
+                    },
+                    lastEvaluationContextWindow: {
+                        history: this._contextWindow,
+                    },
+                },
+            );
+
+            // Update persisted state from the evaluation result.
+            this._chatHistory = res.lastEvaluation.cleanHistory;
+            this._contextWindow = res.lastEvaluation.contextWindow;
+            this._lastShiftMetadata =
+                res.lastEvaluation.contextShiftMetadata;
+
+            // Accumulate text the model generated before calling functions.
+            if (res.response) {
+                fullContent += res.response;
+            }
+
+            // No function calls → model is done generating.
+            if (!res.functionCalls || res.functionCalls.length === 0) {
+                break;
+            }
+
+            if (hasHandlers) {
+                // --- Internal loop: execute handlers, feed results back ---
+                const callItems: ChatModelFunctionCall[] = [];
+
+                for (const fc of res.functionCalls) {
+                    const handler = this._toolHandlers![fc.functionName];
+                    let result: unknown;
+
+                    if (handler) {
+                        try {
+                            result = await handler(fc.params);
+                        } catch (err) {
+                            result = {
+                                error:
+                                    err instanceof Error
+                                        ? err.message
+                                        : String(err),
+                            };
+                        }
+                    } else {
+                        result = {
+                            error: `No handler registered for tool "${fc.functionName}".`,
+                        };
+                    }
+
+                    callItems.push({
+                        type: "functionCall",
+                        name: fc.functionName,
+                        params: fc.params,
+                        rawCall: fc.raw,
+                        result,
+                    } satisfies ChatModelFunctionCall);
+                }
+
+                // Mark the first call item as starting a new chunk (needed
+                // for proper context sequence state with parallel function
+                // calling, and avoids redundant context shifts).
+                if (callItems.length > 0) {
+                    callItems[0]!.startsNewChunk = true;
+                }
+
+                // Push results into both the main history and the context
+                // window so they stay in sync.
+                if (
+                    this._chatHistory.length === 0 ||
+                    this._chatHistory[this._chatHistory.length - 1]!.type !==
+                        "model"
+                ) {
+                    this._chatHistory.push({
+                        type: "model",
+                        response: [],
+                    });
+                }
+                if (
+                    this._contextWindow &&
+                    (this._contextWindow.length === 0 ||
+                        this._contextWindow[this._contextWindow.length - 1]!
+                            .type !== "model")
+                ) {
+                    this._contextWindow.push({
+                        type: "model",
+                        response: [],
+                    });
+                }
+
+                const modelResponse = this._chatHistory[
+                    this._chatHistory.length - 1
+                ]! as ChatModelResponse;
+                const ctxResponse = this._contextWindow?.[
+                    this._contextWindow.length - 1
+                ] as ChatModelResponse | undefined;
+
+                for (const item of callItems) {
+                    modelResponse.response.push(item);
+                    ctxResponse?.response.push(item);
+                }
+            } else {
+                // --- External loop: return function calls to the client ---
+                for (const fc of res.functionCalls) {
+                    const id = `call_${randomHex(24)}`;
+                    this._generatedCalls.set(id, {
+                        name: fc.functionName,
+                        params: fc.params,
+                    });
+                    allToolCalls.push({
+                        id,
+                        type: "function",
+                        function: {
+                            name: fc.functionName,
+                            arguments: JSON.stringify(fc.params),
+                        },
+                    });
+                }
+
+                // The model response with function calls (undefined results)
+                // is already in cleanHistory.  Stop here so the client can
+                // execute the tools and send results back.
+                break;
+            }
+        }
+
+        const finishReason: ChatCompletionChoice["finish_reason"] =
+            allToolCalls.length > 0 ? "tool_calls" : "stop";
+
+        return {
+            content: fullContent,
+            toolCalls:
+                allToolCalls.length > 0 ? allToolCalls : undefined,
+            finishReason,
+        };
+    }
+
+    // =========================================================================
+    // Public API
+    // =========================================================================
 
     async create(
         params: ChatCompletionCreateParams & { stream: true },
@@ -639,43 +778,27 @@ export class ChatCompletionsAPI {
     async create(
         params: ChatCompletionCreateParams,
     ): Promise<ChatCompletion | ChatCompletionStream> {
-        const prompt = this._extractPrompt(params.messages);
-        if (prompt == null) {
-            throw new Error(
-                "No new user message found in messages array. " +
-                    "Each create() call must include at least one user message " +
-                    "that has not been prompted yet.",
-            );
-        }
-
         const modelName = params.model ?? this._modelName;
+
+        // 1. Sync messages — push new user messages to history, collect
+        //    any pending tool results from the client.
+        const newToolMessages = this._syncMessages(params.messages);
+
+        // 2. Apply tool results as function-call results in chat history.
+        this._applyToolResults(newToolMessages);
+
+        // 3. Resolve functions from config + per-request tools.
         const { functions } = this._resolveFunctions(params);
 
         if (params.stream) {
-            return new ChatCompletionStream(
-                this._session,
-                prompt,
-                modelName,
-                functions,
-            );
+            return new ChatCompletionStream(this, modelName, functions);
         }
 
-        // Non-streaming path.
+        // --- Non-streaming path ---
         const id = `chatcmpl-${randomHex(29)}`;
         const created = Math.floor(Date.now() / 1000);
-        let content = "";
 
-        await this._session.prompt(prompt, {
-            functions,
-            onTextChunk(text) {
-                content += text;
-            },
-        });
-
-        // Inspect history for tool calls that fired during this turn.
-        const toolCalls = extractToolCallsFromHistory(this._session);
-        const finishReason: ChatCompletionChoice["finish_reason"] =
-            toolCalls.length > 0 ? "tool_calls" : "stop";
+        const result = await this._runGenerationLoop(functions);
 
         return {
             id,
@@ -687,24 +810,33 @@ export class ChatCompletionsAPI {
                     index: 0,
                     message: {
                         role: "assistant",
-                        content: content || null,
-                        tool_calls:
-                            toolCalls.length > 0 ? toolCalls : undefined,
+                        content: result.content || null,
+                        tool_calls: result.toolCalls,
                     },
-                    finish_reason: finishReason,
+                    finish_reason: result.finishReason,
                 },
             ],
         };
     }
 
-    /** Dispose the current session, create a fresh one, and reset tracked message count. */
+    /** Dispose the current LlamaChat, create a fresh one, and reset all tracked state. */
     resetHistory(): void {
-        this._session.dispose();
-        this._session = new LlamaChatSession({
+        // Preserve system messages from the current history.
+        const systemMessages = this._chatHistory.filter(
+            (h) => h.type === "system",
+        );
+
+        this._llamaChat.dispose();
+        this._llamaChat = new LlamaChat({
             contextSequence: this._contextSequence,
         });
-        this._promptedMessageCount = 0;
-        this._promptedToolCallCount = 0;
+        this._chatHistory = [...systemMessages];
+        this._contextWindow = undefined;
+        this._lastShiftMetadata = undefined;
+        this._trackedUserCount = 0;
+        this._trackedToolCount = 0;
+        this._lastTrackedUserContent = null;
+        this._generatedCalls.clear();
     }
 }
 
@@ -718,22 +850,22 @@ export class OpenAIMock {
     };
 
     constructor(config: OpenAIMockConfig) {
-        const session =
-            config.chatSession ??
-            new LlamaChatSession({
+        const llamaChat =
+            config.llamaChat ??
+            new LlamaChat({
                 contextSequence: config.contextSequence,
-                systemPrompt: config.systemPrompt,
             });
 
         const modelName = config.modelName ?? "local-model";
 
         this.chat = {
             completions: new ChatCompletionsAPI(
-                session,
+                llamaChat,
                 config.contextSequence,
                 modelName,
                 config.modelFunctions,
                 config.toolHandlers,
+                config.systemPrompt,
             ),
         };
     }

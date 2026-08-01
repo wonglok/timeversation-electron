@@ -189,7 +189,13 @@ export const handleLocalOpenAISDK = async ({
                         `,
                     },
                     //
-                    ...conversationMessages,
+                    ...conversationMessages.filter((r, idx) => {
+                        if (idx !== 0) {
+                            return true;
+                        } else {
+                            return r.role !== "system";
+                        }
+                    }),
                     //
                 ],
                 tools: TOOLS,
