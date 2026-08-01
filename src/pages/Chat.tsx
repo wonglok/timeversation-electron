@@ -48,6 +48,24 @@ function PlusIcon() {
     );
 }
 
+function FolderOpenIcon() {
+    return (
+        <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            <path d="M2 9h20" />
+        </svg>
+    );
+}
+
 export function Chat() {
     const { slug, conversationId } = useParams<{
         slug: string;
@@ -107,6 +125,24 @@ export function Chat() {
                             {agent.cliName}
                         </span>
                     </div>
+
+                    {/* Right-side actions */}
+                    <div className="flex-1" />
+                    {conversationId && (
+                        <button
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-panel)] transition-colors"
+                            title="Open session folder"
+                            onClick={() => {
+                                window.ipcRenderer.invoke(
+                                    "open-session-folder",
+                                    conversationId,
+                                );
+                            }}
+                        >
+                            <FolderOpenIcon />
+                            <span>Open Folder</span>
+                        </button>
+                    )}
                 </header>
 
                 {conversationId && (

@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { app, shell, BrowserWindow } from "electron";
+import { app, shell, BrowserWindow, ipcMain } from "electron";
 // import { registerLlmRpc } from "./rpc/llmRpc.ts";
 import { startServer } from "../server/index";
 
@@ -24,6 +24,20 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
     ? path.join(process.env.APP_ROOT, "public")
     : RENDERER_DIST;
+
+// ---- IPC: open the per-conversation session folder ----
+ipcMain.handle(
+    "open-session-folder",
+    (_event, conversationId: string) => {
+        const sessionPath = path.join(
+            app.getPath("appData"),
+            "timeversation",
+            "sessions",
+            conversationId,
+        );
+        void shell.openPath(sessionPath);
+    },
+);
 
 let win: BrowserWindow | null;
 
