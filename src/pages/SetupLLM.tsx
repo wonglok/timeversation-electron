@@ -324,6 +324,14 @@ export function SetupLLM() {
         fetchModels();
     }, [fetchModels]);
 
+    // Reload models whenever the window regains focus (covers tab switches
+    // and in-app navigation back to this page).
+    useEffect(() => {
+        const onFocus = () => fetchModels();
+        window.addEventListener("focus", onFocus);
+        return () => window.removeEventListener("focus", onFocus);
+    }, [fetchModels]);
+
     const startDownload = useCallback(async () => {
         if (!repo.trim()) return;
 
