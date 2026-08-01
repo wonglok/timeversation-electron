@@ -20,6 +20,16 @@ import { writeToolDefinition, handleWriteTool } from "./write";
 import { grepToolDefinition, handleGrepTool } from "./grep";
 import { findToolDefinition, handleFindTool } from "./find";
 import { lsToolDefinition, handleLsTool } from "./ls";
+import {
+    showItemInFolderToolDefinition,
+    openPathToolDefinition,
+    openExternalToolDefinition,
+    beepToolDefinition,
+    handleShowItemInFolderTool,
+    handleOpenPathTool,
+    handleOpenExternalTool,
+    handleBeepTool,
+} from "./shell";
 
 // Re-export types for consumers
 export type { ToolCallRequest, ToolCallResult, ToolDefinition };
@@ -36,6 +46,10 @@ export const TOOLS: ToolDefinition[] = [
     grepToolDefinition,
     findToolDefinition,
     lsToolDefinition,
+    showItemInFolderToolDefinition,
+    openPathToolDefinition,
+    openExternalToolDefinition,
+    beepToolDefinition,
 ];
 
 /** Ordered list of tool names (used in init events / debug output). */
@@ -97,6 +111,18 @@ export function executeToolCall(
 
             case "ls":
                 return handleLsTool(call.id, args, resolvePath);
+
+            case "show_item_in_folder":
+                return handleShowItemInFolderTool(call.id, args, resolvePath);
+
+            case "open_path":
+                return handleOpenPathTool(call.id, args, resolvePath);
+
+            case "open_external":
+                return handleOpenExternalTool(call.id, args);
+
+            case "beep":
+                return handleBeepTool(call.id);
 
             default:
                 return {
