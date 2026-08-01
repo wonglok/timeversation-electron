@@ -1,8 +1,9 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { app, shell, BrowserWindow, ipcMain, screen } from "electron";
+import { app, shell, BrowserWindow, screen } from "electron";
 // import { registerLlmRpc } from "./rpc/llmRpc.ts";
 import { startServer } from "../server/index";
+import { registerIpcHandlers } from "./ipc/ipc";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,16 +26,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
     ? path.join(process.env.APP_ROOT, "public")
     : RENDERER_DIST;
 
-// ---- IPC: open the per-conversation session folder ----
-ipcMain.handle("open-session-folder", (_event, conversationId: string) => {
-    const sessionPath = path.join(
-        app.getPath("appData"),
-        "timeversation",
-        "sessions",
-        conversationId,
-    );
-    void shell.openPath(sessionPath);
-});
+registerIpcHandlers();
 
 let win: BrowserWindow | null;
 
@@ -47,6 +39,7 @@ async function createWindow() {
         },
         ...screen.getPrimaryDisplay().workArea,
     });
+
     // registerLlmRpc(win);
 
     // open external links in the default browser
