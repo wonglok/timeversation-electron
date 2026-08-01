@@ -88,15 +88,7 @@ export const createChatRouter = async ({
             });
         } else if (message && slug === "local") {
             //
-            //
-            // handleLocalPiAgent({
-            //     workspacePath,
-            //     req,
-            //     res,
-            //     message,
-            //     conversationId: req.body.conversationId,
-            // });
-            //
+
             handleLocalNodeLlamaSDK({
                 workspacePath,
                 req,
