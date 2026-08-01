@@ -12,7 +12,7 @@ import type { ToolCallResult } from "./openai-tools/types";
 // ============================================================================
 
 /** Maximum number of LLM → tool → LLM turns before we force-stop. */
-const MAX_AGENT_TURNS = 25;
+const MAX_AGENT_TURNS = 100;
 
 // ============================================================================
 // SSE encoder helpers
@@ -113,12 +113,12 @@ export const handleLocalOpenAISDK = async ({
         appendThreadMessage(workspacePath, conversationId, "user", message);
     }
 
-    // --- Client disconnect → abort turn ---
-    req.on("close", () => {
-        if (!ac.signal.aborted) {
-            ac.abort();
-        }
-    });
+    // // --- Client disconnect → abort turn ---
+    // req.on("close", () => {
+    //     if (!ac.signal.aborted) {
+    //         ac.abort();
+    //     }
+    // });
 
     try {
         const client = new OpenAI({
@@ -161,10 +161,7 @@ export const handleLocalOpenAISDK = async ({
         for (let turn = 0; turn < MAX_AGENT_TURNS; turn++) {
             if (ac.signal.aborted) break;
 
-            writeSSEEvent(
-                res,
-                JSON.stringify({ type: "agent_turn", turn }),
-            );
+            writeSSEEvent(res, JSON.stringify({ type: "agent_turn", turn }));
 
             // --- Stream the LLM response ---
             const responseStream = await client.chat.completions.create({

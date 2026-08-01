@@ -141,6 +141,8 @@ export async function createOpenAiNodeLlamaRouter({
             stream = true,
             temperature,
             max_tokens,
+            tools,
+            tool_choice,
         } = (req.body ?? {}) as ChatCompletionCreateParams & {
             messages: NonNullable<ChatCompletionCreateParams["messages"]>;
         };
@@ -165,6 +167,8 @@ export async function createOpenAiNodeLlamaRouter({
                     stream: true,
                     temperature,
                     max_tokens,
+                    tools,
+                    tool_choice,
                 });
 
                 for await (const chunk of result) {
@@ -190,6 +194,8 @@ export async function createOpenAiNodeLlamaRouter({
                     stream: false,
                     temperature,
                     max_tokens,
+                    tools,
+                    tool_choice,
                 });
                 res.json(completion);
             } catch (err) {
