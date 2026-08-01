@@ -1,7 +1,8 @@
-import {
-    existsSync,
-    realpathSync,
-} from "node:fs";
+// ============================================================================
+// Shared types & helpers for node-llama-tools
+// ============================================================================
+
+import { existsSync, realpathSync } from "node:fs";
 import path from "node:path";
 
 // ============================================================================
@@ -31,7 +32,7 @@ export interface ToolCallResult {
 }
 
 // ============================================================================
-// OpenAI function-calling schema type
+// Tool definition (OpenAI function-calling schema shape)
 // ============================================================================
 
 export interface ToolDefinition {
@@ -53,11 +54,6 @@ export interface ToolDefinition {
 
 export type PathResolver = (p: string) => string;
 
-/**
- * Create a resolvePath function scoped to the given workspace root.
- * Resolves symlinks and `..` segments, then verifies the result stays
- * inside the workspace to prevent path-traversal escapes.
- */
 export function createPathResolver(
     workspacePath: string,
     sessionPath: string,

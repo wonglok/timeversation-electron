@@ -1,20 +1,10 @@
 // ============================================================================
 // Electron shell tools — showItemInFolder, openPath, openExternal, beep
 // ============================================================================
-// These tools expose the Electron `shell` API so the agent can interact with
-// the user's desktop environment: reveal files in the file manager, open
-// files with default applications, launch external URLs in the browser, and
-// play a system beep for user attention.
-// ============================================================================
 
 import { shell } from "electron";
 import { existsSync } from "node:fs";
-import path from "node:path";
 import type { ToolCallResult, ToolDefinition, PathResolver } from "./types";
-
-// ============================================================================
-// Tool definitions
-// ============================================================================
 
 export const showItemInFolderToolDefinition: ToolDefinition = {
     type: "function",
@@ -28,8 +18,7 @@ export const showItemInFolderToolDefinition: ToolDefinition = {
             properties: {
                 path: {
                     type: "string",
-                    description:
-                        "Absolute or relative path to the file or folder to reveal.",
+                    description: "Absolute or relative path to the file or folder to reveal.",
                 },
             },
             required: ["path"],
@@ -51,8 +40,7 @@ export const openPathToolDefinition: ToolDefinition = {
             properties: {
                 path: {
                     type: "string",
-                    description:
-                        "Absolute or relative path to the file or folder to open.",
+                    description: "Absolute or relative path to the file or folder to open.",
                 },
             },
             required: ["path"],
@@ -73,8 +61,7 @@ export const openExternalToolDefinition: ToolDefinition = {
             properties: {
                 url: {
                     type: "string",
-                    description:
-                        "The URL to open (e.g. 'https://github.com', 'mailto:user@example.com').",
+                    description: "The URL to open (e.g. 'https://github.com', 'mailto:user@example.com').",
                 },
             },
             required: ["url"],
@@ -98,10 +85,6 @@ export const beepToolDefinition: ToolDefinition = {
     },
 };
 
-// ============================================================================
-// Handlers
-// ============================================================================
-
 export function handleShowItemInFolderTool(
     callId: string,
     args: Record<string, any>,
@@ -113,9 +96,7 @@ export function handleShowItemInFolderTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: `Path not found: ${targetPath}`,
-            }),
+            content: JSON.stringify({ error: `Path not found: ${targetPath}` }),
         };
     }
 
@@ -123,11 +104,7 @@ export function handleShowItemInFolderTool(
     return {
         tool_call_id: callId,
         role: "tool",
-        content: JSON.stringify({
-            success,
-            path: targetPath,
-            action: "showItemInFolder",
-        }),
+        content: JSON.stringify({ success, path: targetPath, action: "showItemInFolder" }),
     };
 }
 
@@ -142,20 +119,12 @@ export function handleOpenPathTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: `Path not found: ${targetPath}`,
-            }),
+            content: JSON.stringify({ error: `Path not found: ${targetPath}` }),
         };
     }
 
-    // Fire-and-forget: shell.openPath is async but the agent doesn't need
-    // to wait for the external app to launch.
     shell.openPath(targetPath).then((error) => {
-        if (error) {
-            console.error(
-                `[open_path] Failed to open "${targetPath}": ${error}`,
-            );
-        }
+        if (error) console.error(`[open_path] Failed to open "${targetPath}": ${error}`);
     });
 
     return {
@@ -180,13 +149,10 @@ export function handleOpenExternalTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: "A valid URL string is required.",
-            }),
+            content: JSON.stringify({ error: "A valid URL string is required." }),
         };
     }
 
-    // Basic validation: only allow http, https, and mailto schemes.
     if (!/^(https?|mailto):\/\//i.test(url)) {
         return {
             tool_call_id: callId,
@@ -197,7 +163,6 @@ export function handleOpenExternalTool(
         };
     }
 
-    // Fire-and-forget: shell.openExternal is async.
     shell.openExternal(url).catch((err) => {
         console.error(`[open_external] Failed to open "${url}":`, err);
     });
@@ -219,9 +184,6 @@ export function handleBeepTool(callId: string): ToolCallResult {
     return {
         tool_call_id: callId,
         role: "tool",
-        content: JSON.stringify({
-            success: true,
-            action: "beep",
-        }),
+        content: JSON.stringify({ success: true, action: "beep" }),
     };
 }

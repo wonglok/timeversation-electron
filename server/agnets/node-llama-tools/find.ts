@@ -1,10 +1,10 @@
+// ============================================================================
+// find — locate files by name pattern
+// ============================================================================
+
 import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import type { ToolCallResult, ToolDefinition, PathResolver } from "./types";
-
-// ============================================================================
-// Tool definition
-// ============================================================================
 
 export const findToolDefinition: ToolDefinition = {
     type: "function",
@@ -18,13 +18,11 @@ export const findToolDefinition: ToolDefinition = {
             properties: {
                 pattern: {
                     type: "string",
-                    description:
-                        "Substring or glob-like pattern to match against file names/paths (e.g. 'handleClaude', '.test.ts', 'package.json').",
+                    description: "Substring or glob-like pattern to match against file names/paths (e.g. 'handleClaude', '.test.ts', 'package.json').",
                 },
                 directory: {
                     type: "string",
-                    description:
-                        "Directory to search recursively. Defaults to the workspace root.",
+                    description: "Directory to search recursively. Defaults to the workspace root.",
                 },
             },
             required: ["pattern"],
@@ -32,19 +30,13 @@ export const findToolDefinition: ToolDefinition = {
     },
 };
 
-// ============================================================================
-// Handler
-// ============================================================================
-
 export function handleFindTool(
     callId: string,
     args: Record<string, any>,
     workspaceRoot: string,
     resolvePath: PathResolver,
 ): ToolCallResult {
-    const searchDir = args.directory
-        ? resolvePath(args.directory)
-        : workspaceRoot;
+    const searchDir = args.directory ? resolvePath(args.directory) : workspaceRoot;
 
     const results: string[] = [];
     walkFind(searchDir, args.pattern, results, 8);
@@ -61,23 +53,14 @@ export function handleFindTool(
     };
 }
 
-// ============================================================================
-// Recursive walker
-// ============================================================================
-
-function walkFind(
-    dir: string,
-    pattern: string,
-    results: string[],
-    maxDepth: number,
-): void {
+function walkFind(dir: string, pattern: string, results: string[], maxDepth: number): void {
     if (maxDepth <= 0) return;
 
     let entries: string[];
     try {
         entries = readdirSync(dir);
     } catch {
-        return; // Permission denied, broken symlink, etc.
+        return;
     }
 
     for (const name of entries) {

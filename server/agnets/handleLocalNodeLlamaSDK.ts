@@ -1,8 +1,8 @@
 // ============================================================================
 // Local node-llama-cpp agent handler
 // ============================================================================
-// Uses OpenAISDKMock (wrapping node-llama-cpp) for local GGUF model inference
-// with an SSE-streaming agent loop and external tool execution.
+// Uses LlamaChatSession for local GGUF model inference with automatic
+// function-calling loop and SSE streaming.
 // ============================================================================
 
 import { mkdirSync } from "node:fs";
@@ -11,23 +11,16 @@ import path from "node:path";
 import { app } from "electron";
 import {
     getLlama,
+    LlamaChatSession,
     type LlamaModel,
     type LlamaContext,
-    type LlamaContextSequence,
 } from "node-llama-cpp";
-import {
-    OpenAIMock,
-    type OpenAIMockConfig,
-    type ChatCompletionMessage,
-} from "../node-llama-cpp/OpenAISDKMock.js";
 import { appendThreadMessage, getThreadMessages } from "../store/threadStore";
 import {
-    TOOLS,
     TOOL_NAMES,
     TOOL_NAMES_DESC,
-    executeToolCall,
-} from "./openai-tools";
-import type { ToolCallResult } from "./openai-tools/types";
+    buildSessionFunctions,
+} from "./node-llama-tools";
 
 // ============================================================================
 // Constants
@@ -39,9 +32,6 @@ const resolvedModelsDir = path.join(
     "ai-models",
 );
 
-/** Maximum number of LLM → tool → LLM turns before we force-stop. */
-const MAX_AGENT_TURNS = 100;
-
 // ============================================================================
 // Types
 // ============================================================================
@@ -49,13 +39,11 @@ const MAX_AGENT_TURNS = 100;
 interface LlmState {
     model: LlamaModel;
     context: LlamaContext;
-    sequence: LlamaContextSequence;
-    client: OpenAIMock;
     modelPath: string;
 }
 
 // ============================================================================
-// Model state (lazy singleton)
+// Model state (lazy singleton — model + context are reused across requests)
 // ============================================================================
 
 let state: LlmState | null = null;
@@ -66,14 +54,8 @@ export function getLoadedModelPath(): string | null {
     return currentModelPath;
 }
 
-/** Dispose current model, context, and sequence; clear state */
 function disposeState() {
     if (!state) return;
-    try {
-        state.sequence.dispose();
-    } catch {
-        /* ignore */
-    }
     try {
         state.context.dispose();
     } catch {
@@ -88,7 +70,6 @@ function disposeState() {
     currentModelPath = null;
 }
 
-/** Find the first .gguf file in the models directory */
 async function findGgufFile(dir: string): Promise<string | null> {
     try {
         const entries = await readdir(dir, { withFileTypes: true });
@@ -103,10 +84,13 @@ async function findGgufFile(dir: string): Promise<string | null> {
     }
 }
 
-/** Load (or return cached) the Llama model + OpenAIMock client */
-async function getClient(): Promise<OpenAIMock> {
+// ============================================================================
+// Model loading — model + context are reused, session is per-request
+// ============================================================================
+
+async function ensureModelLoaded(): Promise<LlmState> {
     if (state && currentModelPath === state.modelPath) {
-        return state.client;
+        return state;
     }
 
     const modelPath = await findGgufFile(resolvedModelsDir);
@@ -117,29 +101,17 @@ async function getClient(): Promise<OpenAIMock> {
         );
     }
 
-    // Dispose previous state if switching models
     disposeState();
 
     const llama = await getLlama();
     const model = await llama.loadModel({ modelPath });
     const contextSize = Number(process.env.LLM_CONTEXT_SIZE) || 128000;
     const context = await model.createContext({ contextSize });
-    const sequence = context.getSequence();
 
-    const config: OpenAIMockConfig = {
-        model,
-        context,
-        contextSequence: sequence,
-        modelName: path.basename(modelPath, ".gguf"),
-        systemPrompt:
-            "You are a helpful assistant. Keep responses clear and concise.",
-    };
-
-    const client = new OpenAIMock(config);
-    state = { model, context, sequence, client, modelPath };
+    state = { model, context, modelPath };
     currentModelPath = modelPath;
 
-    return client;
+    return state;
 }
 
 // ============================================================================
@@ -171,15 +143,19 @@ function writeSSEEvent(
     }
 
     if (data === "") {
+        // Empty data — emit a single empty data line
         parts.push(encodeLine("data", ""));
     } else {
+        // Split on \n so each physical line gets its own `data:` prefix
         for (const line of data.split("\n")) {
             parts.push(encodeLine("data", `${line}\n`));
         }
     }
 
+    // Terminate the event
     parts.push(encoder.encode("\r\n"));
 
+    // Write as a single Buffer to avoid many small writes
     const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
     const merged = new Uint8Array(totalLen);
     let offset = 0;
@@ -191,7 +167,7 @@ function writeSSEEvent(
 }
 
 // ============================================================================
-// Agent Loop handler
+// Agent handler
 // ============================================================================
 
 export const handleLocalNodeLlamaSDK = async ({
@@ -215,10 +191,12 @@ export const handleLocalNodeLlamaSDK = async ({
         "X-Accel-Buffering": "no",
     });
 
-    // Send an initial comment to flush headers
+    // Flush headers immediately so the client sees the connection is alive
+    // before we spend time loading the model (which can take seconds).
+    res.flushHeaders();
     res.write(encoder.encode(":ok\r\n\r\n"));
 
-    // --- Resolve session directory ---
+    // --- Session directory ---
     const appDataPath = app.getPath("appData");
     const dirSessionId = conversationId || crypto.randomUUID();
     const sessionPath = path.join(
@@ -230,45 +208,65 @@ export const handleLocalNodeLlamaSDK = async ({
     try {
         mkdirSync(sessionPath, { recursive: true });
     } catch (_) {
-        // Directory already exists — fine
+        /* ok */
     }
 
-    // Abort controller so we can cancel the turn when the client disconnects
     const ac = new AbortController();
-
-    // --- Client disconnect → abort turn ---
-    req.on("close", () => {
-        if (!ac.signal.aborted) {
-            ac.abort();
-        }
-    });
+    // req.on("close", () => {
+    //     if (!ac.signal.aborted) ac.abort();
+    // });
 
     // --- Persist user message ---
     if (conversationId) {
         appendThreadMessage(workspacePath, conversationId, "user", message);
     }
 
-    try {
-        const client = await getClient();
+    // Session is scoped outside the try block so we can dispose it in
+    // `finally` and return the sequence to the context pool.
+    let session: LlamaChatSession | null = null;
 
-        // --- Load conversation history ---
-        const history: ChatCompletionMessage[] = [];
+    try {
+        const { context } = await ensureModelLoaded();
+
+        // --- Load conversation history (for multi-turn context) ---
+        let historyBlock = "";
         if (conversationId) {
-            const msgs = await getThreadMessages(
-                workspacePath,
-                conversationId,
-            );
-            for (const m of msgs) {
-                history.push({
-                    role: m.role as "user" | "assistant",
-                    content: m.content,
-                });
+            const msgs = await getThreadMessages(workspacePath, conversationId);
+            if (msgs.length > 0) {
+                historyBlock =
+                    "\n# Conversation so far\n" +
+                    msgs.map((m) => `${m.role}: ${m.content}`).join("\n") +
+                    "\n\nContinue the conversation naturally.";
             }
         }
 
-        let fullAssistantText = "";
+        // --- System prompt ---
+        const systemPrompt = `# Role
+You are an ai coding agent to help user.
 
-        // --- Write init event ---
+# Tools
+The tools you have are:
+${TOOL_NAMES_DESC.join("\n")}
+
+# Rule
+You workspace is at: ${sessionPath}
+You must only work at folder: ${sessionPath}
+${historyBlock}`;
+
+        // --- Build functions ---
+        const functions = buildSessionFunctions(
+            res,
+            workspacePath,
+            sessionPath,
+        );
+
+        // --- Create a fresh session per request (systemPrompt in constructor) ---
+        session = new LlamaChatSession({
+            contextSequence: context.getSequence(),
+            systemPrompt,
+        });
+
+        // --- Init event ---
         writeSSEEvent(
             res,
             JSON.stringify({
@@ -280,222 +278,96 @@ export const handleLocalNodeLlamaSDK = async ({
             }),
         );
 
-        // --- Build the conversation messages for the first turn ---
-        const conversationMessages: ChatCompletionMessage[] = [
-            {
-                role: "system",
-                content: `# Role
-You are an ai coding agent to help user.
+        // --- Stream ---
+        // onTextChunk fires only for the main text response.
+        // onResponseChunk fires for ALL chunks including thinking/CoT segments.
+        // We stream both types to the client immediately as they arrive.
+        // The ChatBox's appendBubble merges consecutive same-kind bubbles,
+        // so many small chunks coalesce into a single ThinkingBubble / TextBubble.
+        let fullResponse = "";
 
-# Tools
-The tools you have are:
-${TOOL_NAMES_DESC.join("\n")}
+        // Debug: log model inference start (check server console)
+        console.log(
+            "[local-llama] promptWithMeta starting (model: %s)",
+            currentModelPath,
+        );
 
-# Rule
-You workspace is at: ${sessionPath}
-You must only work at folder: ${sessionPath}
-`,
+        const result = await session.promptWithMeta(message, {
+            functions: functions as any,
+            onTextChunk: (chunk: string) => {
+                if (!chunk) return; // skip empty boundary markers
+                console.log("[local-llama] onTextChunk: %s", chunk);
+                fullResponse += chunk;
+                writeSSEEvent(
+                    res,
+                    JSON.stringify({
+                        type: "text",
+                        content: chunk,
+                    }),
+                );
             },
-            ...history,
-            { role: "user", content: message },
-        ];
-
-        // =====================================================================
-        // Agent Loop
-        // =====================================================================
-
-        for (let turn = 0; turn < MAX_AGENT_TURNS; turn++) {
-            if (ac.signal.aborted) break;
-
-            writeSSEEvent(res, JSON.stringify({ type: "agent_turn", turn }));
-
-            // --- Stream the LLM response ---
-            const responseStream = await client.chat.completions.create({
-                messages: conversationMessages,
-                tools: TOOLS.map(
-                    (t: (typeof TOOLS)[number]) => ({
-                        type: "function" as const,
-                        function: t.function,
-                    }),
-                ),
-                stream: true,
-            });
-
-            let turnText = "";
-
-            // Accumulate tool-call fragments by index
-            const toolCallsByIndex = new Map<
-                number,
-                {
-                    id: string;
-                    type: "function";
-                    function: { name: string; arguments: string };
-                }
-            >();
-
-            for await (const chunk of responseStream) {
-                if (ac.signal.aborted) break;
-
-                const delta = chunk.choices[0]?.delta as
-                    | Record<string, any>
-                    | undefined;
-
-                // --- Text content ---
-                if (delta?.content) {
-                    turnText += delta.content;
-                    writeSSEEvent(
-                        res,
-                        JSON.stringify({
-                            type: "text",
-                            content: delta.content,
-                        }),
-                    );
-                }
-
-                // --- Tool-call deltas ---
-                if (delta?.tool_calls) {
-                    for (const tc of delta.tool_calls) {
-                        const idx = tc.index as number;
-                        const existing = toolCallsByIndex.get(idx) ?? {
-                            id: "",
-                            type: "function" as const,
-                            function: { name: "", arguments: "" },
-                        };
-
-                        if (tc.id) existing.id = tc.id;
-                        if (tc.function?.name)
-                            existing.function.name += tc.function.name;
-                        if (tc.function?.arguments)
-                            existing.function.arguments +=
-                                tc.function.arguments;
-
-                        toolCallsByIndex.set(idx, existing);
+            onResponseChunk: (chunk) => {
+                // Skip chunks with no text — node-llama-cpp emits zero-length
+                // chunks as segment start/end boundary markers.
+                if (!chunk.text) return;
+                console.log(
+                    "[local-llama] onResponseChunk type=%s segmentType=%s text=%s",
+                    chunk.type ?? "undefined",
+                    chunk.segmentType ?? "undefined",
+                    chunk.text,
+                );
+                if (chunk.type === "segment") {
+                    if (chunk.segmentType === "thought") {
+                        writeSSEEvent(
+                            res,
+                            JSON.stringify({
+                                type: "thinking",
+                                content: chunk.text,
+                            }),
+                        );
                     }
+                    // "comment" segments are handled internally by
+                    // node-llama-cpp's function-calling machinery.
                 }
-            }
+                // type === undefined chunks are main text, already
+                // handled by onTextChunk — no need to double-emit.
+            },
+            signal: ac.signal,
+            stopOnAbortSignal: true,
+            maxTokens: 4096,
+        });
 
-            if (ac.signal.aborted) break;
+        console.log(
+            "[local-llama] promptWithMeta done — stopReason=%s responseText=%s",
+            result.stopReason,
+            result.responseText,
+        );
 
-            // --- Collect completed tool calls (sorted by index) ---
-            const toolCalls = Array.from(toolCallsByIndex.entries())
-                .sort(([a], [b]) => a - b)
-                .map(([, tc]) => ({
-                    id: tc.id,
-                    type: tc.type,
-                    function: {
-                        name: tc.function.name,
-                        arguments: tc.function.arguments,
-                    },
-                }));
-
-            // --- Branch: no tool calls → final response ---
-            if (toolCalls.length === 0) {
-                fullAssistantText += turnText;
-
-                conversationMessages.push({
-                    role: "assistant",
-                    content: turnText || null,
-                });
-
-                if (conversationId && fullAssistantText.trim()) {
-                    await appendThreadMessage(
-                        workspacePath,
-                        conversationId,
-                        "assistant",
-                        fullAssistantText.trim(),
-                    );
-                }
-
-                writeSSEEvent(
-                    res,
-                    JSON.stringify({
-                        type: "agent_done",
-                        total_turns: turn + 1,
-                    }),
-                );
-                writeSSEEvent(res, "[DONE]");
-                res.end();
-                return;
-            }
-
-            // --- Branch: tool calls present → execute & loop ---
-            fullAssistantText += turnText;
-
-            // Forward tool-call events to the client
-            for (const tc of toolCalls) {
-                writeSSEEvent(
-                    res,
-                    JSON.stringify({
-                        type: "tool_call",
-                        tool_call_id: tc.id,
-                        name: tc.function.name,
-                        arguments: tc.function.arguments,
-                    }),
-                );
-            }
-
-            // Build the assistant message with tool calls
-            conversationMessages.push({
-                role: "assistant",
-                content: turnText || null,
-                tool_calls: toolCalls,
-            } as ChatCompletionMessage);
-
-            // Execute each tool call and collect results
-            const toolResults: ToolCallResult[] = [];
-            for (const tc of toolCalls) {
-                const result = executeToolCall(
-                    {
-                        id: tc.id,
-                        name: tc.function.name,
-                        arguments: tc.function.arguments,
-                    },
-                    workspacePath,
-                    sessionPath,
-                );
-
-                toolResults.push(result);
-
-                writeSSEEvent(
-                    res,
-                    JSON.stringify({
-                        type: "tool_result",
-                        tool_call_id: result.tool_call_id,
-                        content: result.content,
-                    }),
-                );
-            }
-
-            // Append tool-result messages to the conversation
-            for (const tr of toolResults) {
-                conversationMessages.push({
-                    role: "tool",
-                    tool_call_id: tr.tool_call_id,
-                    content: tr.content,
-                } as ChatCompletionMessage);
-            }
-        }
-
-        // --- Max turns reached ---
-        if (conversationId && fullAssistantText.trim()) {
+        // --- Persist ---
+        const finalText = result.responseText?.trim() || fullResponse.trim();
+        if (conversationId && finalText) {
             await appendThreadMessage(
                 workspacePath,
                 conversationId,
                 "assistant",
-                fullAssistantText.trim(),
+                finalText,
             );
         }
 
+        // --- Result footer with stop reason ---
         writeSSEEvent(
             res,
             JSON.stringify({
-                type: "agent_done",
-                total_turns: MAX_AGENT_TURNS,
-                warning: "Max agent turns reached — loop terminated.",
+                type: "result",
+                subtype: result.stopReason === "abort" ? "error" : "success",
+                stop_reason: result.stopReason,
             }),
         );
+
+        writeSSEEvent(res, JSON.stringify({ type: "agent_done" }));
         writeSSEEvent(res, "[DONE]");
     } catch (err: any) {
+        console.error("[local-llama] error:", err.message ?? err);
         if (err.name === "AbortError") {
             writeSSEEvent(res, "[DONE]");
         } else {
@@ -507,8 +379,17 @@ You must only work at folder: ${sessionPath}
                 }),
                 "error",
             );
+            // Signal stream end so the client stops waiting for more data
+            writeSSEEvent(res, "[DONE]");
         }
     } finally {
+        if (session) {
+            try {
+                session.dispose({ disposeSequence: true });
+            } catch {
+                /* best-effort cleanup */
+            }
+        }
         res.end();
     }
 };

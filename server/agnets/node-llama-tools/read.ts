@@ -1,10 +1,10 @@
+// ============================================================================
+// read — read file contents
+// ============================================================================
+
 import { existsSync, readFileSync, statSync } from "node:fs";
 import type { ToolCallResult, ToolDefinition, PathResolver } from "./types";
 import { MAX_READ_BYTES } from "./types";
-
-// ============================================================================
-// Tool definition
-// ============================================================================
 
 export const readToolDefinition: ToolDefinition = {
     type: "function",
@@ -18,18 +18,13 @@ export const readToolDefinition: ToolDefinition = {
             properties: {
                 path: {
                     type: "string",
-                    description:
-                        "Absolute or relative path to the file to read.",
+                    description: "Absolute or relative path to the file to read.",
                 },
             },
             required: ["path"],
         },
     },
 };
-
-// ============================================================================
-// Handler
-// ============================================================================
 
 export function handleReadTool(
     callId: string,
@@ -42,9 +37,7 @@ export function handleReadTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: `File not found: ${filePath}`,
-            }),
+            content: JSON.stringify({ error: `File not found: ${filePath}` }),
         };
     }
 
@@ -53,9 +46,7 @@ export function handleReadTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: `Path is a directory, not a file: ${filePath}`,
-            }),
+            content: JSON.stringify({ error: `Path is a directory, not a file: ${filePath}` }),
         };
     }
 

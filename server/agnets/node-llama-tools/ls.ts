@@ -1,10 +1,10 @@
+// ============================================================================
+// ls — list directory contents
+// ============================================================================
+
 import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import type { ToolCallResult, ToolDefinition, PathResolver } from "./types";
-
-// ============================================================================
-// Tool definition
-// ============================================================================
 
 export const lsToolDefinition: ToolDefinition = {
     type: "function",
@@ -18,18 +18,13 @@ export const lsToolDefinition: ToolDefinition = {
             properties: {
                 path: {
                     type: "string",
-                    description:
-                        "Absolute or relative path to the directory to list.",
+                    description: "Absolute or relative path to the directory to list.",
                 },
             },
             required: ["path"],
         },
     },
 };
-
-// ============================================================================
-// Handler
-// ============================================================================
 
 export function handleLsTool(
     callId: string,
@@ -42,9 +37,7 @@ export function handleLsTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: `Directory not found: ${dirPath}`,
-            }),
+            content: JSON.stringify({ error: `Directory not found: ${dirPath}` }),
         };
     }
 
@@ -53,18 +46,14 @@ export function handleLsTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: `Path is not a directory: ${dirPath}`,
-            }),
+            content: JSON.stringify({ error: `Path is not a directory: ${dirPath}` }),
         };
     }
 
     const entries = readdirSync(dirPath).map((name) => {
         const fullPath = path.join(dirPath, name);
         try {
-            const prefix = statSync(fullPath).isDirectory()
-                ? "[DIR] "
-                : "[FILE]";
+            const prefix = statSync(fullPath).isDirectory() ? "[DIR] " : "[FILE]";
             return `${prefix} ${name}`;
         } catch {
             return `[???] ${name}`;

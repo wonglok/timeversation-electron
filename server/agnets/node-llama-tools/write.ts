@@ -1,10 +1,10 @@
+// ============================================================================
+// write — create or overwrite a file
+// ============================================================================
+
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { ToolCallResult, ToolDefinition, PathResolver } from "./types";
-
-// ============================================================================
-// Tool definition
-// ============================================================================
 
 export const writeToolDefinition: ToolDefinition = {
     type: "function",
@@ -19,23 +19,17 @@ export const writeToolDefinition: ToolDefinition = {
             properties: {
                 path: {
                     type: "string",
-                    description:
-                        "Absolute or relative path to the file to write.",
+                    description: "Absolute or relative path to the file to write.",
                 },
                 content: {
                     type: "string",
-                    description:
-                        "The complete text content to write to the file.",
+                    description: "The complete text content to write to the file.",
                 },
             },
             required: ["path", "content"],
         },
     },
 };
-
-// ============================================================================
-// Handler
-// ============================================================================
 
 export function handleWriteTool(
     callId: string,

@@ -1,10 +1,10 @@
+// ============================================================================
+// edit — exact string replacement in existing files
+// ============================================================================
+
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import type { ToolCallResult, ToolDefinition, PathResolver } from "./types";
 import { MAX_READ_BYTES } from "./types";
-
-// ============================================================================
-// Tool definition
-// ============================================================================
 
 export const editToolDefinition: ToolDefinition = {
     type: "function",
@@ -21,33 +21,25 @@ export const editToolDefinition: ToolDefinition = {
             properties: {
                 path: {
                     type: "string",
-                    description:
-                        "Absolute or relative path to the file to edit.",
+                    description: "Absolute or relative path to the file to edit.",
                 },
                 old_string: {
                     type: "string",
-                    description:
-                        "The exact text to find and replace. Must match exactly including whitespace.",
+                    description: "The exact text to find and replace. Must match exactly including whitespace.",
                 },
                 new_string: {
                     type: "string",
-                    description:
-                        "The replacement text. Must be different from old_string.",
+                    description: "The replacement text. Must be different from old_string.",
                 },
                 replace_all: {
                     type: "boolean",
-                    description:
-                        "If true, replace all occurrences. Default: false (single replacement, errors if not unique).",
+                    description: "If true, replace all occurrences. Default: false (single replacement, errors if not unique).",
                 },
             },
             required: ["path", "old_string", "new_string"],
         },
     },
 };
-
-// ============================================================================
-// Handler
-// ============================================================================
 
 export function handleEditTool(
     callId: string,
@@ -60,9 +52,7 @@ export function handleEditTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: `File not found: ${filePath}`,
-            }),
+            content: JSON.stringify({ error: `File not found: ${filePath}` }),
         };
     }
 
@@ -71,9 +61,7 @@ export function handleEditTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: `Path is a directory, not a file: ${filePath}`,
-            }),
+            content: JSON.stringify({ error: `Path is a directory, not a file: ${filePath}` }),
         };
     }
 
@@ -97,23 +85,17 @@ export function handleEditTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: "old_string and new_string are identical — no change needed.",
-            }),
+            content: JSON.stringify({ error: "old_string and new_string are identical — no change needed." }),
         };
     }
 
-    // --- Replace all ---
     if (args.replace_all) {
         const count = oldContent.split(oldStr).length - 1;
         if (count === 0) {
             return {
                 tool_call_id: callId,
                 role: "tool",
-                content: JSON.stringify({
-                    error: "old_string not found in file (0 occurrences).",
-                    path: filePath,
-                }),
+                content: JSON.stringify({ error: "old_string not found in file (0 occurrences).", path: filePath }),
             };
         }
         const newContent = oldContent.replaceAll(oldStr, newStr);
@@ -121,24 +103,16 @@ export function handleEditTool(
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                success: true,
-                path: filePath,
-                replacements: count,
-            }),
+            content: JSON.stringify({ success: true, path: filePath, replacements: count }),
         };
     }
 
-    // --- Single replacement (must be unique) ---
     const firstIdx = oldContent.indexOf(oldStr);
     if (firstIdx === -1) {
         return {
             tool_call_id: callId,
             role: "tool",
-            content: JSON.stringify({
-                error: "old_string not found in file.",
-                path: filePath,
-            }),
+            content: JSON.stringify({ error: "old_string not found in file.", path: filePath }),
         };
     }
 
@@ -160,20 +134,13 @@ export function handleEditTool(
     }
 
     const newContent =
-        oldContent.slice(0, firstIdx) +
-        newStr +
-        oldContent.slice(firstIdx + oldStr.length);
+        oldContent.slice(0, firstIdx) + newStr + oldContent.slice(firstIdx + oldStr.length);
     writeFileSync(filePath, newContent, "utf-8");
 
     const lineNum = oldContent.slice(0, firstIdx).split("\n").length;
     return {
         tool_call_id: callId,
         role: "tool",
-        content: JSON.stringify({
-            success: true,
-            path: filePath,
-            replacements: 1,
-            line: lineNum,
-        }),
+        content: JSON.stringify({ success: true, path: filePath, replacements: 1, line: lineNum }),
     };
 }
