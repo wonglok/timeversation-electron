@@ -1,7 +1,6 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { app, shell, BrowserWindow, screen } from "electron";
-// import { registerLlmRpc } from "./rpc/llmRpc.ts";
 import { startServer } from "../server/index";
 import { registerIpcHandlers } from "./ipc/ipc";
 
@@ -39,8 +38,6 @@ async function createWindow() {
         },
         ...screen.getPrimaryDisplay().workArea,
     });
-
-    // registerLlmRpc(win);
 
     // open external links in the default browser
     win.webContents.setWindowOpenHandler(({ url }) => {
