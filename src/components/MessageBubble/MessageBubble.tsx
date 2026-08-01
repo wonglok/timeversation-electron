@@ -147,10 +147,18 @@ export function TextBubble({ text }: { text: string }) {
     );
 }
 
-export function ThinkingBubble({ text }: { text: string }) {
+export function ThinkingBubble({
+    text,
+    defaultOpen = false,
+}: {
+    text: string;
+    defaultOpen?: boolean;
+}) {
     return (
         <div className="flex justify-start max-w-[85%]">
-            <Collapsible label="Thinking">{text}</Collapsible>
+            <Collapsible label="Thinking" defaultOpen={defaultOpen}>
+                {text}
+            </Collapsible>
         </div>
     );
 }
@@ -225,7 +233,13 @@ export function ResultFooter({
 // ACP bubble dispatcher
 // ============================================================================
 
-export function AcpBubble({ bubble }: { bubble: Bubble }) {
+export function AcpBubble({
+    bubble,
+    thinkingDefaultOpen,
+}: {
+    bubble: Bubble;
+    thinkingDefaultOpen?: boolean;
+}) {
     switch (bubble.kind) {
         case "user":
             return (
@@ -238,7 +252,12 @@ export function AcpBubble({ bubble }: { bubble: Bubble }) {
         case "text":
             return <TextBubble text={bubble.text ?? ""} />;
         case "thinking":
-            return <ThinkingBubble text={bubble.text ?? ""} />;
+            return (
+                <ThinkingBubble
+                    text={bubble.text ?? ""}
+                    defaultOpen={thinkingDefaultOpen ?? false}
+                />
+            );
         case "tool_use":
             return (
                 <ToolUseBubble

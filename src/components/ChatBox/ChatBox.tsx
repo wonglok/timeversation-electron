@@ -659,11 +659,29 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     />
                 )}
 
-                {groupBubbles(bubbles).map((group) => (
-                    <div key={group.id} className="flex flex-col gap-1.5">
-                        {group.bubbles.map((b) => (
-                            <AcpBubble key={b.id} bubble={b} />
-                        ))}
+                {groupBubbles(bubbles).map((group) => {
+                    const hasRealOutput = group.bubbles.some(
+                        (b) => b.kind === "text" || b.kind === "tool_use",
+                    );
+                    return (
+                        <div key={group.id} className="flex flex-col gap-1.5">
+                            {group.bubbles.map((b) => {
+                                const thinkingOpen =
+                                    b.kind === "thinking" && !hasRealOutput;
+                                const bubbleKey =
+                                    b.kind === "thinking"
+                                        ? `${b.id}-${hasRealOutput ? "c" : "o"}`
+                                        : b.id;
+                                return (
+                                    <AcpBubble
+                                        key={bubbleKey}
+                                        bubble={b}
+                                        thinkingDefaultOpen={
+                                            thinkingOpen || undefined
+                                        }
+                                    />
+                                );
+                            })}
                         {group.resultFooter && (
                             <ResultFooter
                                 usage={group.resultFooter.usage}
@@ -672,7 +690,8 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                             />
                         )}
                     </div>
-                ))}
+                    );
+                })}
 
                 {sending && <LoadingBubble />}
             </div>
