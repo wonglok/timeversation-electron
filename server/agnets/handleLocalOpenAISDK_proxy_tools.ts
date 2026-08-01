@@ -4,7 +4,6 @@ import path from "node:path";
 import { appendThreadMessage, getThreadMessages } from "../store/threadStore";
 import { OpenAI } from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/index.mjs";
-import type { ChatCompletion } from "openai/resources/index.mjs";
 import {
     TOOLS,
     TOOL_NAMES,
@@ -69,15 +68,8 @@ function writeSSEEvent(
 }
 
 // ============================================================================
-// Local OpenAI SDK handler — external-loop agent with SSE streaming
+// Agent Loop handler
 // ============================================================================
-//
-// Follows the external-loop pattern:
-//   1. Send user message + tool definitions
-//   2. Model responds with tool_calls (no execution)
-//   3. Server executes the tools and feeds results back
-//   4. Model synthesises a final answer
-//   5. Repeat until no more tool calls or max turns reached
 
 export const handleLocalOpenAISDK = async ({
     req,
@@ -126,12 +118,12 @@ export const handleLocalOpenAISDK = async ({
         appendThreadMessage(workspacePath, conversationId, "user", message);
     }
 
-    // --- Client disconnect → abort turn ---
-    req.on("close", () => {
-        if (!ac.signal.aborted) {
-            ac.abort();
-        }
-    });
+    // // --- Client disconnect → abort turn ---
+    // req.on("close", () => {
+    //     if (!ac.signal.aborted) {
+    //         ac.abort();
+    //     }
+    // });
 
     try {
         const client = new OpenAI({
@@ -139,9 +131,6 @@ export const handleLocalOpenAISDK = async ({
             baseURL: `http://localhost:8390/api/llm`,
         });
 
-        // Load persisted thread messages so the model has conversation
-        // context.  The mock also maintains its own internal state, but
-        // this provides recovery across server restarts.
         const msg = await getThreadMessages(
             workspacePath,
             conversationId as string,
@@ -171,7 +160,7 @@ export const handleLocalOpenAISDK = async ({
         );
 
         // =====================================================================
-        // Agent Loop (external loop — matches the example pattern)
+        // Agent Loop
         // =====================================================================
 
         for (let turn = 0; turn < MAX_AGENT_TURNS; turn++) {
@@ -179,58 +168,117 @@ export const handleLocalOpenAISDK = async ({
 
             writeSSEEvent(res, JSON.stringify({ type: "agent_turn", turn }));
 
-            // --- Non-streaming LLM call ---
-            const response = (await client.chat.completions.create({
+            // --- Stream the LLM response ---
+            const responseStream = await client.chat.completions.create({
                 model: `default`,
+                reasoning_effort: "high",
                 messages: [
                     {
                         role: "system",
-                        content: [
-                            "# Role",
-                            "You are an ai coding agent to help user.",
-                            "",
-                            "# Tools",
-                            "The tools you have are:",
-                            ...TOOL_NAMES_DESC,
-                            "",
-                            "# Rule",
-                            `You workspace is at: ${sessionPath}`,
-                            `You must only work at folder: ${sessionPath}`,
-                        ].join("\n"),
+                        content: `
+                        # Role
+                        You are an ai coding agent to help user.
+
+                        # Tools
+                        The tools you have are: 
+                        ${TOOL_NAMES_DESC.join("\n")}
+
+                        # Rule
+                        You workspace is at: ${sessionPath}
+                        You must only work at folder: ${sessionPath}
+                        `,
                     },
-                    ...conversationMessages,
+                    //
+                    ...conversationMessages.filter((r, idx) => {
+                        if (idx !== 0) {
+                            return true;
+                        } else {
+                            return r.role !== "system";
+                        }
+                    }),
+                    //
                 ],
-                tools: TOOLS as any,
-                stream: false,
-            })) as ChatCompletion;
+                tools: TOOLS,
+                stream: true,
+            });
+
+            let turnText = "";
+
+            // Accumulate tool-call fragments by index
+            const toolCallsByIndex = new Map<
+                number,
+                {
+                    id: string;
+                    type: "function";
+                    function: { name: string; arguments: string };
+                }
+            >();
+
+            for await (const item of responseStream) {
+                if (ac.signal.aborted) break;
+
+                const delta = item.choices[0]?.delta as
+                    | Record<string, any>
+                    | undefined;
+
+                // --- Thinking / reasoning tokens ---
+                if (delta?.reasoning_content) {
+                    writeSSEEvent(
+                        res,
+                        JSON.stringify({
+                            type: "thinking",
+                            content: delta.reasoning_content,
+                        }),
+                    );
+                }
+
+                // --- Text content ---
+                if (delta?.content) {
+                    turnText += delta.content;
+                    writeSSEEvent(
+                        res,
+                        JSON.stringify({
+                            type: "text",
+                            content: delta.content,
+                        }),
+                    );
+                }
+
+                // --- Tool-call deltas ---
+                if (delta?.tool_calls) {
+                    for (const tc of delta.tool_calls) {
+                        const idx = tc.index as number;
+                        const existing = toolCallsByIndex.get(idx) ?? {
+                            id: "",
+                            type: "function" as const,
+                            function: { name: "", arguments: "" },
+                        };
+
+                        if (tc.id) existing.id = tc.id;
+                        if (tc.function?.name)
+                            existing.function.name += tc.function.name;
+                        if (tc.function?.arguments)
+                            existing.function.arguments +=
+                                tc.function.arguments;
+
+                        toolCallsByIndex.set(idx, existing);
+                    }
+                }
+            }
 
             if (ac.signal.aborted) break;
 
-            const choice = response.choices[0]!;
-            const turnText = choice.message.content ?? "";
-
-            // Normalize tool calls — the OpenAI SDK type is a discriminated
-            // union, but our mock always returns the standard shape.
-            const rawToolCalls: any[] = choice.message.tool_calls ?? [];
-            const toolCalls = rawToolCalls.map((tc: any) => ({
-                id: tc.id as string,
-                type: "function" as const,
-                function: {
-                    name: tc.function?.name as string ?? "",
-                    arguments: tc.function?.arguments as string ?? "",
-                },
-            }));
-
-            // --- Emit text content to the client ---
-            if (turnText) {
-                writeSSEEvent(
-                    res,
-                    JSON.stringify({
-                        type: "text",
-                        content: turnText,
-                    }),
-                );
-            }
+            // --- Collect completed tool calls (sorted by index) ---
+            const toolCalls = Array.from(toolCallsByIndex.entries())
+                .sort(([a], [b]) => a - b)
+                .map(([, tc]) => ({
+                    id: tc.id,
+                    type: tc.type,
+                    function: {
+                        name: tc.function.name,
+                        arguments: tc.function.arguments,
+                    },
+                }));
 
             // --- Branch: no tool calls → final response ---
             if (toolCalls.length === 0) {
@@ -310,9 +358,7 @@ export const handleLocalOpenAISDK = async ({
                 );
             }
 
-            // Append tool-result messages to the conversation.
-            // These match the example pattern:
-            //   { role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) }
+            // Append tool-result messages to the conversation
             for (const tr of toolResults) {
                 conversationMessages.push({
                     role: "tool",

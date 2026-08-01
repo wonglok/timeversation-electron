@@ -2,8 +2,8 @@
  * Example: OpenAISDKMock usage with node-llama-cpp
  *
  * Demonstrates model loading, text generation (streaming + non-streaming),
- * tool calling with `defineTool` / `collectTools`, multi-turn conversation,
- * and session reset.
+ * tool calling with `defineTool` / `collectTools` (external & internal loops),
+ * multi-turn conversation, and session reset.
  *
  * Run with:  npx tsx server/node-llama-cpp/example.ts
  *
@@ -14,7 +14,6 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
     getLlama,
-    LlamaChatSession,
     type LlamaModel,
     type LlamaContext,
     type LlamaContextSequence,
@@ -116,7 +115,35 @@ const collected = collectTools(getWeather, calculate);
 // 3. Create the OpenAIMock client
 // ============================================================================
 
+/**
+ * Create a client for the **external loop** pattern — the mock returns
+ * `tool_calls` to the caller, which executes tools and sends results back
+ * in a follow-up request.  This matches the standard OpenAI SDK workflow.
+ */
 function createClient(
+    model: LlamaModel,
+    context: LlamaContext,
+    sequence: LlamaContextSequence,
+): OpenAIMock {
+    const config: OpenAIMockConfig = {
+        model,
+        context,
+        contextSequence: sequence,
+        modelName: "local-llama-3",
+        systemPrompt:
+            "You are a helpful assistant. Use tools when appropriate. " +
+            "Keep responses concise.",
+    };
+
+    return new OpenAIMock(config);
+}
+
+/**
+ * Create a client for the **internal loop** pattern — `toolHandlers` are
+ * wired into the mock so it executes functions itself and returns the final
+ * answer directly.  The caller never sees `tool_calls`.
+ */
+function createClientWithHandlers(
     model: LlamaModel,
     context: LlamaContext,
     sequence: LlamaContextSequence,
@@ -183,11 +210,20 @@ async function streamingExample(client: OpenAIMock): Promise<void> {
 }
 
 // ============================================================================
-// 6. Tool calling — model invokes a function and gets the result back
+// 6. Tool calling — external loop (client executes tools)
 // ============================================================================
+//
+// This is the standard OpenAI SDK pattern:
+//   1. Send user message + tool definitions
+//   2. Model responds with tool_calls (no execution)
+//   3. Client executes the tools and sends results back
+//   4. Model synthesises a final answer
+//
+// Use this pattern when tool execution must happen on the client side
+// (e.g. file-system access in Electron's renderer, browser APIs, etc.).
 
 async function toolCallingExample(client: OpenAIMock): Promise<void> {
-    console.log("=== Tool calling ===\n");
+    console.log("=== Tool calling (external loop) ===\n");
 
     // --- Step 1: Ask a question that triggers a tool call ---
     const response1 = (await client.chat.completions.create({
@@ -244,7 +280,46 @@ async function toolCallingExample(client: OpenAIMock): Promise<void> {
 }
 
 // ============================================================================
-// 7. Multi-turn conversation
+// 7. Tool calling — internal loop (mock executes handlers)
+// ============================================================================
+//
+// When `toolHandlers` are passed via `OpenAIMockConfig`, the mock runs the
+// full function-calling loop internally:
+//   model calls function → handler executes → result fed back → model continues
+//
+// The response is the model's final answer — no `tool_calls` to process.
+// Use this pattern when tool handlers can run in the Node.js server process.
+
+async function internalToolCallingExample(
+    client: OpenAIMock,
+): Promise<void> {
+    console.log("=== Tool calling (internal loop) ===\n");
+
+    const response = (await client.chat.completions.create({
+        messages: [
+            { role: "user", content: "What's the weather in Tokyo?" },
+        ],
+        tools: collected.tools,
+        stream: false,
+    })) as ChatCompletion;
+
+    const choice = response.choices[0]!;
+    console.log("Model:", response.model);
+    console.log("Content:", choice.message.content);
+    console.log("Finish reason:", choice.finish_reason);
+
+    // With the internal loop the response is the final answer —
+    // tool_calls are handled automatically and never exposed.
+    if (choice.message.tool_calls) {
+        console.log(
+            "\n(Internal loop: tool_calls were handled automatically)",
+        );
+    }
+    console.log();
+}
+
+// ============================================================================
+// 8. Multi-turn conversation
 // ============================================================================
 
 async function multiTurnExample(client: OpenAIMock): Promise<void> {
@@ -265,7 +340,7 @@ async function multiTurnExample(client: OpenAIMock): Promise<void> {
 }
 
 // ============================================================================
-// 8. Session reset (clears context)
+// 9. Session reset (clears context)
 // ============================================================================
 
 async function resetExample(client: OpenAIMock): Promise<void> {
@@ -285,7 +360,7 @@ async function resetExample(client: OpenAIMock): Promise<void> {
 }
 
 // ============================================================================
-// 9. Streaming with tool calls — the stream emits tool_calls deltas
+// 10. Streaming with tool calls — the stream emits tool_calls deltas
 // ============================================================================
 
 async function streamingWithToolsExample(client: OpenAIMock): Promise<void> {
@@ -333,14 +408,31 @@ async function main(): Promise<void> {
     console.log();
 
     const { model, context, sequence } = await loadModel();
+
+    // External-loop client — tool_calls are returned to the caller.
     const client = createClient(model, context, sequence);
 
+    // Internal-loop client — tool_calls are handled by the mock.
+    const clientWithHandlers = createClientWithHandlers(
+        model,
+        context,
+        sequence,
+    );
+
     try {
+        // --- Basic generation ---
         await nonStreamingExample(client);
         await streamingExample(client);
+
+        // --- Tool calling: external vs internal loop ---
         await toolCallingExample(client);
+        await internalToolCallingExample(clientWithHandlers);
+
+        // --- Conversation & lifecycle ---
         await multiTurnExample(client);
         await resetExample(client);
+
+        // --- Streaming with tools ---
         await streamingWithToolsExample(client);
     } finally {
         // Clean up (optional — GC handles it, but explicit is safer).
