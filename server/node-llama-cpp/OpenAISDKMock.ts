@@ -530,15 +530,66 @@ export class ChatCompletionsAPI {
         this._toolHandlers = toolHandlers;
     }
 
+    /** Track how many tool-call turns we've consumed so we don't re-prompt stale tool results. */
+    private _promptedToolCallCount = 0;
+
+    /**
+     * Extract the next prompt from an OpenAI-format messages array.
+     *
+     * Two modes:
+     * 1. New user messages present → extract the last user message as the prompt.
+     * 2. No new user messages, but tool results are present (agent loop fed
+     *    tool outputs back without a new user message) → format the tool
+     *    results as a continuation prompt so the model can respond to them.
+     */
     private _extractPrompt(messages: ChatCompletionMessage[]): string | null {
         const userMessages = messages.filter((m) => m.role === "user");
-        if (userMessages.length <= this._promptedMessageCount) return null;
 
-        const newMessages = userMessages.slice(this._promptedMessageCount);
-        this._promptedMessageCount += newMessages.length;
+        // --- Path 1: there are new user messages ---
+        if (userMessages.length > this._promptedMessageCount) {
+            const newMessages = userMessages.slice(this._promptedMessageCount);
+            this._promptedMessageCount += newMessages.length;
+            const last = newMessages[newMessages.length - 1]!;
+            return last.content;
+        }
 
-        const last = newMessages[newMessages.length - 1]!;
-        return last.content;
+        // --- Path 2: no new user messages — check for pending tool results ---
+        // The agent loop appends assistant (with tool_calls) + tool messages
+        // after each turn. Count tool messages to detect new tool turns.
+        const toolMessages = messages.filter((m) => m.role === "tool");
+
+        if (toolMessages.length > this._promptedToolCallCount) {
+            // New tool results have arrived — build a continuation prompt.
+            const newToolMessages = toolMessages.slice(
+                this._promptedToolCallCount,
+            );
+            this._promptedToolCallCount = toolMessages.length;
+
+            const parts = newToolMessages.map((tm) => {
+                const parsed = (() => {
+                    try {
+                        return JSON.parse(tm.content ?? "{}");
+                    } catch {
+                        return tm.content;
+                    }
+                })();
+                return `Tool result (${tm.tool_call_id}): ${typeof parsed === "string" ? parsed : JSON.stringify(parsed)}`;
+            });
+
+            if (parts.length > 0) {
+                // Also update the user-message count so future calls with
+                // the same tool results don't re-enter this path.
+                this._promptedMessageCount = userMessages.length;
+                return (
+                    "The tool results are listed below. Continue with your response " +
+                    "based on these results. If the task is complete, summarize what was done.\n\n" +
+                    parts.join("\n\n")
+                );
+            }
+        }
+
+        // --- Path 3: nothing new at all ---
+        return null;
     }
 
     /** Merge config-level model functions with per-request OpenAI tools. */
@@ -653,6 +704,7 @@ export class ChatCompletionsAPI {
             contextSequence: this._contextSequence,
         });
         this._promptedMessageCount = 0;
+        this._promptedToolCallCount = 0;
     }
 }
 
