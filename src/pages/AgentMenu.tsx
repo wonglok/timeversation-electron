@@ -1,5 +1,5 @@
 // ============================================================================
-// Home page — agent launcher dashboard
+// Agent Menu — agent launcher dashboard (2026 sizing)
 // ============================================================================
 
 import { useEffect, useState } from "react";
@@ -18,8 +18,8 @@ const API_BASE = "http://localhost:8390";
 function ChevronRightIcon() {
     return (
         <svg
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -34,13 +34,13 @@ function ChevronRightIcon() {
 
 function InstalledDot() {
     return (
-        <svg width="6" height="6" viewBox="0 0 6 6">
+        <svg width="7" height="7" viewBox="0 0 6 6">
             <circle cx="3" cy="3" r="3" fill="currentColor" />
         </svg>
     );
 }
 
-function LoaderIcon({ size = 16 }: { size?: number }) {
+function LoaderIcon({ size = 18 }: { size?: number }) {
     return (
         <svg
             width={size}
@@ -58,13 +58,12 @@ function LoaderIcon({ size = 16 }: { size?: number }) {
     );
 }
 
-// Skeleton placeholder card shown while agents are being detected
 function SkeletonCard() {
     return (
-        <div className="flex flex-col items-center gap-2 px-4 py-4 rounded-sm border border-transparent bg-[var(--bg-panel)] animate-pulse">
-            <div className="w-9 h-9 rounded-sm bg-[var(--border-subtle)]" />
+        <div className="flex flex-col items-center gap-2.5 px-5 py-5 rounded-md border border-transparent bg-[var(--bg-panel)] animate-pulse">
+            <div className="w-10 h-10 rounded-md bg-[var(--border-subtle)]" />
+            <div className="w-20 h-3.5 rounded-sm bg-[var(--border-subtle)]" />
             <div className="w-16 h-3 rounded-sm bg-[var(--border-subtle)]" />
-            <div className="w-12 h-2.5 rounded-sm bg-[var(--border-subtle)]" />
         </div>
     );
 }
@@ -107,16 +106,16 @@ export function AgentMenu() {
     const agentList = BUILTIN_AGENTS.filter((r) => r.slug !== "local");
 
     return (
-        <main className="flex flex-col items-center px-6 pt-12 pb-16 min-h-screen bg-[var(--bg-canvas)]">
+        <main className="flex flex-col items-center px-6 pt-16 pb-20 min-h-screen bg-[var(--bg-canvas)]">
             {/* ---- Back link ---- */}
-            <div className="w-full max-w-[680px] mb-6">
+            <div className="w-full max-w-[720px] mb-8">
                 <button
-                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] transition-colors"
+                    className="inline-flex items-center gap-2 text-[12px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] transition-colors"
                     onClick={() => navigate("/")}
                 >
                     <svg
-                        width="16"
-                        height="16"
+                        width="18"
+                        height="18"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -131,42 +130,39 @@ export function AgentMenu() {
             </div>
 
             {/* ---- Hero ---- */}
-            <section className="flex flex-col items-center text-center max-w-[560px] gap-3">
-                {/* Title */}
-                <h1 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--text-primary)] m-0">
+            <section className="flex flex-col items-center text-center max-w-[640px] gap-4">
+                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-[var(--text-primary)] m-0">
                     Pick an Agent
                 </h1>
-
-                {/* Subtitle */}
-                <p className="text-[13px] text-[var(--text-dim)] leading-relaxed max-w-[380px] m-0">
-                    Timeversation can resue locally installed agent, so that you
-                    dont have to buy a new plan.
+                <p className="text-[14px] text-[var(--text-dim)] leading-relaxed max-w-[420px] m-0">
+                    Timeversation can reuse locally installed agents, so you
+                    don't have to buy a new plan.
                 </p>
             </section>
 
             {/* ---- Agent Grid ---- */}
-            <section className="flex flex-col items-center gap-4 mt-12 max-w-[680px] w-full">
-                {/* Section label — Photoshop panel-header style */}
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)]">
+            <section className="flex flex-col items-center gap-5 mt-16 max-w-[720px] w-full">
+                {/* Section label */}
+                <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.045em] text-[var(--text-dim)]">
                         Available agents
                     </span>
                     {checking ? (
-                        <LoaderIcon size={12} />
+                        <LoaderIcon size={14} />
                     ) : (
-                        <span className="text-[10px] text-[var(--text-dim)] tabular-nums">
+                        <span className="text-[11px] text-[var(--text-dim)] tabular-nums">
                             {installedCount}/{agentList.length} installed
                         </span>
                     )}
                     <button
-                        className="inline-flex items-center justify-center w-5 h-5 rounded-sm text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Refresh agent status"
                         onClick={checkInstalled}
                         disabled={checking}
                     >
                         <svg
-                            width="12"
-                            height="12"
+                            width="14"
+                            height="14"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -180,7 +176,7 @@ export function AgentMenu() {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 w-full">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full">
                     {checking
                         ? Array.from({ length: agentList.length }).map(
                               (_, i) => <SkeletonCard key={i} />,
@@ -207,7 +203,7 @@ export function AgentMenu() {
                                                 }
                                               : undefined
                                       }
-                                      className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-sm border transition-all duration-150 select-none ${
+                                      className={`relative flex flex-col items-center gap-2.5 px-5 py-5 rounded-md border transition-all duration-150 select-none ${
                                           isDark
                                               ? isInstalled
                                                   ? "bg-[#1E2D3B] border-[#2D404F] cursor-pointer hover:border-[var(--tiffany)] hover:bg-[#233645] hover:shadow-sm"
@@ -220,7 +216,7 @@ export function AgentMenu() {
                                       {/* Status indicator */}
                                       {isInstalled ? (
                                           <span
-                                              className="absolute top-2 right-2 text-[var(--tiffany)]"
+                                              className="absolute top-2.5 right-2.5 text-[var(--tiffany)]"
                                               title="Installed"
                                           >
                                               <InstalledDot />
@@ -230,15 +226,15 @@ export function AgentMenu() {
                                       {/* Icon */}
                                       {IconComponent ? (
                                           <IconComponent
-                                              size={isInstalled ? 36 : 32}
+                                              size={isInstalled ? 40 : 34}
                                           />
                                       ) : (
-                                          <div className="w-9 h-9 rounded-sm bg-[var(--border-subtle)]" />
+                                          <div className="w-10 h-10 rounded-md bg-[var(--border-subtle)]" />
                                       )}
 
                                       {/* Name */}
                                       <span
-                                          className={`text-[12px] font-semibold leading-tight text-center ${
+                                          className={`text-[13px] font-semibold leading-tight text-center ${
                                               isDark
                                                   ? "text-[#E8ECF0]"
                                                   : "text-[var(--text-primary)]"
@@ -249,7 +245,7 @@ export function AgentMenu() {
 
                                       {/* CLI name — mono pill */}
                                       <span
-                                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded-sm leading-none ${
+                                          className={`text-[11px] font-mono px-2 py-0.5 rounded-sm leading-none ${
                                               isDark
                                                   ? "text-[#8CA0B0] bg-[#16232F]"
                                                   : "text-[var(--text-dim)] bg-[var(--bg-panel)]"
@@ -260,7 +256,7 @@ export function AgentMenu() {
 
                                       {/* Hover hint */}
                                       {isInstalled && (
-                                          <span className="hidden absolute bottom-2 right-2 text-[var(--tiffany)] opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <span className="hidden absolute bottom-2.5 right-2.5 text-[var(--tiffany)] opacity-0 group-hover:opacity-100 transition-opacity">
                                               <ChevronRightIcon />
                                           </span>
                                       )}
@@ -271,24 +267,21 @@ export function AgentMenu() {
             </section>
 
             {/* ---- Local AI Section ---- */}
-            <section className="flex flex-col items-center gap-4 mt-10 max-w-[680px] w-full">
-                {/* Section label */}
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)]">
+            <section className="flex flex-col items-center gap-5 mt-14 max-w-[720px] w-full">
+                <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.045em] text-[var(--text-dim)]">
                         Local AI
                     </span>
                 </div>
 
-                {/* Local LLM card */}
                 <div
-                    className="glass-card flex items-center gap-4 px-5 py-4 w-full cursor-pointer hover:border-[var(--tiffany-soft)] transition-colors group"
+                    className="glass-card flex items-center gap-5 px-6 py-5 w-full cursor-pointer hover:border-[var(--tiffany-soft)] transition-colors group"
                     onClick={() => navigate("/setup")}
                 >
-                    {/* Icon */}
                     <div className="shrink-0 text-[var(--tiffany)]">
                         <svg
-                            width="36"
-                            height="36"
+                            width="40"
+                            height="40"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -296,16 +289,12 @@ export function AgentMenu() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                         >
-                            {/* CPU chip body */}
                             <rect x="3" y="3" width="18" height="18" rx="2" />
-                            {/* Pins */}
                             <path d="M8 1v2M16 1v2M8 21v2M16 21v2M21 8h2M21 16h2M1 8h2M1 16h2" />
-                            {/* Inner brain/neural pattern */}
                             <circle cx="9" cy="10" r="1.5" />
                             <circle cx="15" cy="10" r="1.5" />
                             <circle cx="12" cy="15" r="1.5" />
                             <path d="M9 10l3 5 3-5" opacity={0.6} />
-                            {/* Signal waves */}
                             <path
                                 d="M18 8v1M18 15v1M20 7v3M20 14v3"
                                 opacity={0.4}
@@ -313,17 +302,15 @@ export function AgentMenu() {
                         </svg>
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        <span className="text-[13px] font-semibold text-[var(--text-primary)]">
                             Local LLM Setup
                         </span>
-                        <span className="block text-[10px] text-[var(--text-dim)] font-mono mt-0.5">
+                        <span className="block text-[11px] text-[var(--text-dim)] font-mono mt-0.5">
                             node-llama-cpp
                         </span>
                     </div>
 
-                    {/* Arrow hint */}
                     <span className="shrink-0 text-[var(--text-dim)] group-hover:text-[var(--tiffany)] transition-colors">
                         <ChevronRightIcon />
                     </span>
@@ -331,8 +318,8 @@ export function AgentMenu() {
             </section>
 
             {/* ---- Footer ---- */}
-            <p className="mt-10 text-[10px] text-[var(--text-dim)]">
-                Local AI may not have all the capabilites of the cloud AI
+            <p className="mt-12 text-[11px] text-[var(--text-dim)]">
+                Local AI may not have all the capabilities of the cloud AI
             </p>
         </main>
     );

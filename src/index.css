@@ -2,7 +2,7 @@
 @import "@dannymichel/proxima-nova";
 
 :root {
-    /* Tiffany accent scale */
+    /* ---- Tiffany accent scale ---- */
     --tiffany: #81D8D0;
     --tiffany-deep: #5AB8B0;
     --tiffany-soft: #B8E8E3;
@@ -14,31 +14,37 @@
     --accent-glow: #96C8E2;
     --success: #7BB8A0;
 
-    /* Photoshop panel surface hierarchy */
-    --bg-canvas: #F2F5F5;       /* workspace — the empty canvas */
-    --bg-panel: #E9EDED;        /* panel surface — sidebar, tool panels */
-    --bg-surface: #FFFFFF;      /* content cards, messages */
-    --bg-card: #FFFFFF;         /* cards (solid, not glass) */
+    /* ---- Surface hierarchy ---- */
+    --bg-canvas: #F2F5F5;
+    --bg-panel: #E9EDED;
+    --bg-surface: #FFFFFF;
+    --bg-card: #FFFFFF;
     --bg-hover: rgba(129, 216, 208, 0.06);
 
-    /* Panel borders — sharp, structured */
+    /* ---- Borders ---- */
     --border-panel: #D5DEDE;
     --border-subtle: #E2E8E8;
     --border-glow: rgba(129, 216, 208, 0.35);
     --border-active: var(--tiffany);
 
-    /* Text */
+    /* ---- Text ---- */
     --text-primary: #2C3A42;
     --text-secondary: #5C7A8A;
     --text-dim: #8A9DA8;
 
-    --radius: 6px;
-    --radius-panel: 4px;
+    /* ---- 2026 sizing tokens ---- */
+    --radius-sm: 6px;       /* panels, tabs, compact elements */
+    --radius-md: 8px;       /* cards, inputs */
+    --radius-lg: 12px;      /* buttons, dialogs */
+    --radius-xl: 16px;      /* modals, large cards */
+
+    --space-unit: 4px;
     --transition-easing: cubic-bezier(0.22, 0.61, 0.36, 1);
 
+    /* ---- 2026 type scale ---- */
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Proxima Nova", Inter, system-ui, sans-serif;
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 14px;           /* base: panel-dense but comfortable */
+    line-height: 1.55;
     font-weight: 400;
     color-scheme: light;
     background-color: var(--bg-canvas);
@@ -66,18 +72,18 @@ body::before {
     z-index: 0;
     pointer-events: none;
     background:
-        /* Subtle canvas texture — barely visible grid lines */
+        /* Subtle 4px grid — refined from the old 2px lines */
         repeating-linear-gradient(
             0deg,
             transparent,
-            transparent 2px,
-            rgba(129, 216, 208, 0.015) 2px,
-            rgba(129, 216, 208, 0.015) 3px
+            transparent 4px,
+            rgba(129, 216, 208, 0.012) 4px,
+            rgba(129, 216, 208, 0.012) 5px
         ),
-        /* Single soft accent bloom (replaces multi-orb dreamy effect) */
+        /* Single soft glow — larger, more diffuse */
         radial-gradient(
-            ellipse 800px 400px at 50% 30%,
-            rgba(129, 216, 208, 0.06) 0%,
+            ellipse 900px 500px at 50% 30%,
+            rgba(129, 216, 208, 0.05) 0%,
             transparent 100%
         );
 }
@@ -93,38 +99,38 @@ body::before {
 h1, h2, h3 {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Proxima Nova", Inter, system-ui, sans-serif;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
 }
 
-/* ---- Photoshop Panel ---- */
+/* ---- Panel (Photoshop DNA, refined) ---- */
 .ps-panel {
     background: var(--bg-surface);
     border: 1px solid var(--border-panel);
-    border-radius: var(--radius-panel);
+    border-radius: var(--radius-sm);
 }
 
 .ps-panel-header {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.045em;
     color: var(--text-dim);
-    padding: 6px 10px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--border-subtle);
     user-select: none;
 }
 
-/* ---- Card (solid, structured — no glass blur) ---- */
+/* ---- Card (solid, refined) ---- */
 .glass-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .glass-card:hover {
     border-color: var(--border-glow);
-    box-shadow: 0 1px 4px rgba(129, 216, 208, 0.08);
+    box-shadow: 0 1px 6px rgba(129, 216, 208, 0.10);
     transition:
         border-color 0.2s var(--transition-easing),
         box-shadow 0.2s var(--transition-easing);
@@ -137,13 +143,13 @@ h1, h2, h3 {
     justify-content: center;
     gap: 0.5rem;
     padding: 0.75rem 2rem;
-    font-size: 1rem;
+    font-size: 0.9375rem;      /* 15px — confident but not oversized */
     font-weight: 600;
     font-family: inherit;
     color: #FFFFFF;
     background: linear-gradient(135deg, #81D8D0 0%, #6BA5C4 100%);
     border: 1px solid rgba(129, 216, 208, 0.30);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     cursor: pointer;
     transition: all 0.3s var(--transition-easing);
     position: relative;
@@ -154,7 +160,7 @@ h1, h2, h3 {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     background: linear-gradient(
         135deg,
         rgba(255, 255, 255, 0.35) 0%,
@@ -167,8 +173,8 @@ h1, h2, h3 {
     background: linear-gradient(135deg, #8FDCD5 0%, #78B2CE 100%);
     border-color: rgba(129, 216, 208, 0.50);
     box-shadow:
-        0 2px 8px rgba(129, 216, 208, 0.15),
-        0 8px 24px rgba(129, 216, 208, 0.10);
+        0 2px 10px rgba(129, 216, 208, 0.18),
+        0 8px 28px rgba(129, 216, 208, 0.12);
     transform: translateY(-1px);
 }
 
@@ -189,14 +195,14 @@ h1, h2, h3 {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.6rem 1.5rem;
-    font-size: 0.875rem;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.8125rem;      /* 13px */
     font-weight: 500;
     font-family: inherit;
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.3s var(--transition-easing);
 }
@@ -214,13 +220,13 @@ h1, h2, h3 {
 
 /* ---- Input Fields ---- */
 .input-field {
-    padding: 0.6rem 0.9rem;
-    font-size: 0.875rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;      /* 13px */
     font-family: inherit;
     color: var(--text-primary);
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     outline: none;
     transition:
         border-color 0.3s var(--transition-easing),
@@ -246,13 +252,13 @@ h1, h2, h3 {
 
 /* ---- Step Indicators ---- */
 .step-dot {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     font-weight: 700;
     transition: all 0.4s var(--transition-easing);
 }
@@ -260,7 +266,7 @@ h1, h2, h3 {
 .step-dot.active {
     background: var(--primary);
     color: #fff;
-    box-shadow: 0 0 18px rgba(129, 216, 208, 0.4);
+    box-shadow: 0 0 20px rgba(129, 216, 208, 0.4);
 }
 
 .step-dot.done {
@@ -277,25 +283,25 @@ h1, h2, h3 {
 /* ---- Progress Bar ---- */
 .progress-bar {
     width: 100%;
-    height: 4px;
+    height: 5px;
     background: rgba(129, 216, 208, 0.10);
-    border-radius: 2px;
+    border-radius: 3px;
     overflow: hidden;
 }
 
 .progress-bar-fill {
     height: 100%;
-    border-radius: 2px;
+    border-radius: 3px;
     background: linear-gradient(90deg, var(--tiffany), var(--accent));
     transition: width 0.5s var(--transition-easing);
-    box-shadow: 0 0 10px rgba(129, 216, 208, 0.3);
+    box-shadow: 0 0 12px rgba(129, 216, 208, 0.3);
 }
 
-/* ---- Staggered Reveal ---- */
+/* ---- Staggered Reveal (slower, more graceful) ---- */
 @keyframes fadeUp {
     from {
         opacity: 0;
-        transform: translateY(24px);
+        transform: translateY(28px);
     }
     to {
         opacity: 1;
@@ -303,15 +309,15 @@ h1, h2, h3 {
     }
 }
 
-.reveal-1 { animation: fadeUp 0.6s var(--transition-easing) 0.05s both; }
-.reveal-2 { animation: fadeUp 0.6s var(--transition-easing) 0.15s both; }
-.reveal-3 { animation: fadeUp 0.6s var(--transition-easing) 0.25s both; }
-.reveal-4 { animation: fadeUp 0.6s var(--transition-easing) 0.35s both; }
+.reveal-1 { animation: fadeUp 0.7s var(--transition-easing) 0.05s both; }
+.reveal-2 { animation: fadeUp 0.7s var(--transition-easing) 0.18s both; }
+.reveal-3 { animation: fadeUp 0.7s var(--transition-easing) 0.31s both; }
+.reveal-4 { animation: fadeUp 0.7s var(--transition-easing) 0.44s both; }
 
 /* ---- Pulse Ring ---- */
 @keyframes pulse-ring {
     0% { box-shadow: 0 0 0 0 rgba(129, 216, 208, 0.3); }
-    70% { box-shadow: 0 0 0 12px rgba(129, 216, 208, 0); }
+    70% { box-shadow: 0 0 0 14px rgba(129, 216, 208, 0); }
     100% { box-shadow: 0 0 0 0 rgba(129, 216, 208, 0); }
 }
 
@@ -327,7 +333,7 @@ h1, h2, h3 {
     }
     50% {
         opacity: 0.6;
-        box-shadow: 0 0 0 6px rgba(163, 230, 53, 0);
+        box-shadow: 0 0 0 7px rgba(163, 230, 53, 0);
     }
 }
 
@@ -335,7 +341,7 @@ h1, h2, h3 {
     animation: lime-pulse 2s ease-in-out infinite;
 }
 
-/* ---- Loading Dot ---- */
+/* ---- Loading Dot (slightly larger) ---- */
 @keyframes loading-float {
     0%, 100% {
         opacity: 0.3;
@@ -349,8 +355,8 @@ h1, h2, h3 {
 
 .loading-dot {
     display: inline-block;
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 0.5625rem;
+    height: 0.5625rem;
     border-radius: 50%;
     background: var(--primary);
     animation: loading-float 0.8s ease-in-out infinite;
@@ -370,13 +376,13 @@ h1, h2, h3 {
 
 /* ---- Select ---- */
 .select-field {
-    padding: 0.6rem 0.9rem;
-    font-size: 0.875rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
     font-family: inherit;
     color: var(--text-primary);
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     outline: none;
     cursor: pointer;
     transition: border-color 0.3s var(--transition-easing);
@@ -400,7 +406,7 @@ a:hover {
 
 /* ---- Scrollbar ---- */
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -409,7 +415,7 @@ a:hover {
 
 ::-webkit-scrollbar-thumb {
     background: rgba(129, 216, 208, 0.20);
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -426,8 +432,8 @@ a:hover {
 code {
     background: rgba(129, 216, 208, 0.10);
     color: var(--text-secondary);
-    padding: 0.1em 0.4em;
-    border-radius: 4px;
+    padding: 0.15em 0.45em;
+    border-radius: var(--radius-sm);
     font-size: 0.9em;
     font-weight: 500;
 }

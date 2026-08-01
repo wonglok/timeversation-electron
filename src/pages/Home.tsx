@@ -1,5 +1,5 @@
 // ============================================================================
-// Home page — Timeversation landing / introduction
+// Home page — Timeversation landing / introduction (2026 sizing)
 // ============================================================================
 
 import { useNavigate } from "react-router-dom";
@@ -11,8 +11,8 @@ import { useNavigate } from "react-router-dom";
 function LogoIcon() {
     return (
         <svg
-            width="48"
-            height="48"
+            width="56"
+            height="56"
             viewBox="0 0 48 48"
             fill="none"
             stroke="currentColor"
@@ -21,10 +21,8 @@ function LogoIcon() {
             strokeLinejoin="round"
             className="text-[var(--tiffany)]"
         >
-            {/* Hourglass shape — conversations creating working hours */}
             <path d="M14 4h20M14 44h20M16 4v10a8 8 0 0 0 8 8h0a8 8 0 0 0 8-8V4" />
             <path d="M16 44V34a8 8 0 0 1 8-8h0a8 8 0 0 1 8 8v10" />
-            {/* Flow lines connecting both halves */}
             <path d="M24 22v4" opacity={0.5} />
             <path d="M20 24h8" opacity={0.3} />
         </svg>
@@ -34,8 +32,8 @@ function LogoIcon() {
 function ArrowRightIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -51,8 +49,8 @@ function ArrowRightIcon() {
 function ChatLinesIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -68,8 +66,8 @@ function ChatLinesIcon() {
 function LayersIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -87,8 +85,8 @@ function LayersIcon() {
 function ClockIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -110,26 +108,26 @@ export function Home() {
     const navigate = useNavigate();
 
     return (
-        <main className="flex flex-col items-center px-6 pt-20 pb-16 min-h-screen bg-[var(--bg-canvas)]">
+        <main className="flex flex-col items-center px-6 pt-24 pb-20 min-h-screen bg-[var(--bg-canvas)]">
             {/* ---- Hero ---- */}
-            <section className="flex flex-col items-center text-center max-w-[560px] gap-4 reveal-1">
+            <section className="flex flex-col items-center text-center max-w-[640px] gap-5 reveal-1">
                 {/* Logo */}
-                <div className="mb-2">
+                <div className="mb-3">
                     <LogoIcon />
                 </div>
 
                 {/* Title */}
-                <h1 className="text-[28px] font-bold tracking-[-0.03em] text-[var(--text-primary)] m-0">
+                <h1 className="text-[36px] font-bold tracking-[-0.03em] text-[var(--text-primary)] m-0 leading-tight">
                     Timeversation
                 </h1>
 
                 {/* Tagline */}
-                <p className="text-[15px] text-[var(--text-dim)] leading-relaxed max-w-[420px] m-0">
+                <p className="text-[16px] text-[var(--text-dim)] leading-relaxed max-w-[460px] m-0">
                     Conversations that create working hours.
                 </p>
 
                 {/* Description */}
-                <p className="text-[12px] text-[var(--text-dim)] leading-relaxed max-w-[380px] m-0 mt-1">
+                <p className="text-[14px] text-[var(--text-dim)] leading-relaxed max-w-[420px] m-0 mt-1">
                     A desktop workspace for coding agents — track conversations,
                     manage multiple AI assistants, and turn dialogue into
                     productive work sessions.
@@ -137,7 +135,7 @@ export function Home() {
             </section>
 
             {/* ---- Feature highlights ---- */}
-            <section className="flex flex-wrap justify-center gap-4 mt-12 max-w-[560px] reveal-2">
+            <section className="flex flex-wrap justify-center gap-5 mt-16 max-w-[640px] reveal-2">
                 {[
                     {
                         icon: <ChatLinesIcon />,
@@ -157,13 +155,13 @@ export function Home() {
                 ].map((f) => (
                     <div
                         key={f.label}
-                        className="flex flex-col items-center text-center gap-1.5 px-4 py-3 w-[160px]"
+                        className="flex flex-col items-center text-center gap-2 px-5 py-4 w-[176px]"
                     >
                         <span className="text-[var(--tiffany)]">{f.icon}</span>
-                        <span className="text-[12px] font-semibold text-[var(--text-primary)]">
+                        <span className="text-[13px] font-semibold text-[var(--text-primary)]">
                             {f.label}
                         </span>
-                        <span className="text-[10px] text-[var(--text-dim)] leading-relaxed">
+                        <span className="text-[11px] text-[var(--text-dim)] leading-relaxed">
                             {f.desc}
                         </span>
                     </div>
@@ -171,9 +169,9 @@ export function Home() {
             </section>
 
             {/* ---- CTA ---- */}
-            <section className="mt-12 reveal-3">
+            <section className="mt-16 reveal-3">
                 <button
-                    className="btn-primary text-[14px] px-6 py-3 gap-2"
+                    className="btn-primary text-[15px] px-7 py-3.5 gap-2.5"
                     onClick={() => navigate("/menu")}
                 >
                     Get Started
@@ -182,7 +180,7 @@ export function Home() {
             </section>
 
             {/* ---- Footer ---- */}
-            <p className="mt-10 text-[10px] text-[var(--text-dim)]">
+            <p className="mt-12 text-[11px] text-[var(--text-dim)]">
                 Reuse paid agents or run local models for your creative
                 workflow.
             </p>

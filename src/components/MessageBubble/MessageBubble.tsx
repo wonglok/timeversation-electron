@@ -1,14 +1,9 @@
 // ============================================================================
-// MessageBubble — reusable chat message components
-//
-// Two tiers:
-//   MessageBubble    — simple { role, content } for generic CLI agents
-//   AcpBubble        — rich ACP bubble dispatcher for Claude Code / Kimi etc.
+// MessageBubble — reusable chat message components (2026 sizing)
 // ============================================================================
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-
 import { useState } from "react";
 import type { SimpleMessage, Bubble, BubbleGroup, AcpUsage } from "./types";
 
@@ -32,19 +27,18 @@ function fmtDuration(ms: number): string {
 }
 
 // ============================================================================
-// Simple message bubble (Chat.tsx)
+// Simple message bubble
 // ============================================================================
 
 export function MessageBubble({ message }: { message: SimpleMessage }) {
     const isUser = message.role === "user";
-
     return (
         <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
             <div
-                className={`max-w-[85%] px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[85%] px-5 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap ${
                     isUser
-                        ? "bg-[var(--tiffany)] text-white rounded-br-sm"
-                        : "glass-card rounded-bl-sm text-[var(--text-primary)]"
+                        ? "bg-[var(--tiffany)] text-white rounded-br-md"
+                        : "glass-card rounded-bl-md text-[var(--text-primary)]"
                 }`}
             >
                 {message.content}
@@ -60,10 +54,10 @@ export function MessageBubble({ message }: { message: SimpleMessage }) {
 export function LoadingBubble() {
     return (
         <div className="flex justify-start">
-            <div className="glass-card px-4 py-2.5 rounded-xl rounded-bl-sm text-sm text-[var(--text-dim)]">
-                <span className="loading-dot mr-1" />
+            <div className="glass-card px-5 py-3 rounded-2xl rounded-bl-md text-[14px] text-[var(--text-dim)]">
+                <span className="loading-dot mr-1.5" />
                 <span
-                    className="loading-dot mr-1"
+                    className="loading-dot mr-1.5"
                     style={{ animationDelay: "0.15s" }}
                 />
                 <span
@@ -87,17 +81,19 @@ export function EmptyChat({
     subtitle?: string;
 }) {
     return (
-        <div className="flex flex-col items-center gap-2 mt-16 text-center">
-            <p className="text-[var(--text-dim)] text-sm">{title}</p>
+        <div className="flex flex-col items-center gap-3 mt-20 text-center">
+            <p className="text-[var(--text-dim)] text-[14px]">{title}</p>
             {subtitle && (
-                <p className="text-[var(--text-dim)] text-xs">{subtitle}</p>
+                <p className="text-[var(--text-dim)] text-[12px]">
+                    {subtitle}
+                </p>
             )}
         </div>
     );
 }
 
 // ============================================================================
-// Collapsible (shared by thinking & tool-use bubbles)
+// Collapsible (thinking & tool-use bubbles)
 // ============================================================================
 
 export function Collapsible({
@@ -112,14 +108,13 @@ export function Collapsible({
     const [open, setOpen] = useState(defaultOpen);
 
     return (
-        <div className="rounded-lg border border-[var(--border-subtle)] overflow-hidden text-xs w-full">
+        <div className="rounded-lg border border-[var(--border-subtle)] overflow-hidden text-[13px] w-full">
             <button
-                className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[var(--text-dim)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer select-none"
+                className="w-full flex items-center gap-2 px-3.5 py-2 text-[var(--text-dim)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer select-none"
                 onClick={() => setOpen(!open)}
             >
-                {/* Chevron icon */}
                 <svg
-                    className={`w-3 h-3 transition-transform ${open ? "rotate-90" : ""}`}
+                    className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-90" : ""}`}
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -127,10 +122,10 @@ export function Collapsible({
                 >
                     <polyline points="9 18 15 12 9 6" />
                 </svg>
-                <span className="font-medium">{label}</span>
+                <span className="font-medium text-[12px]">{label}</span>
             </button>
             {open && (
-                <div className="px-3 py-2 border-t border-[var(--border-subtle)] text-[var(--text-secondary)] whitespace-pre-wrap max-h-60 overflow-y-auto">
+                <div className="px-3.5 py-2.5 border-t border-[var(--border-subtle)] text-[var(--text-secondary)] whitespace-pre-wrap max-h-64 overflow-y-auto text-[13px]">
                     {children}
                 </div>
             )}
@@ -142,20 +137,16 @@ export function Collapsible({
 // ACP bubble sub-types
 // ============================================================================
 
-/** Assistant text bubble (left-aligned glass card). */
 export function TextBubble({ text }: { text: string }) {
     return (
         <div className="flex justify-start">
-            <div className="max-w-[85%] px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap glass-card rounded-bl-sm text-[var(--text-primary)]">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {text}
-                </ReactMarkdown>
+            <div className="max-w-[85%] px-5 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap glass-card rounded-bl-md text-[var(--text-primary)]">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
             </div>
         </div>
     );
 }
 
-/** Collapsible thinking / reasoning bubble. */
 export function ThinkingBubble({ text }: { text: string }) {
     return (
         <div className="flex justify-start max-w-[85%]">
@@ -164,7 +155,6 @@ export function ThinkingBubble({ text }: { text: string }) {
     );
 }
 
-/** Collapsible tool-use bubble showing name + JSON input. */
 export function ToolUseBubble({
     toolName,
     toolInput,
@@ -175,13 +165,14 @@ export function ToolUseBubble({
     return (
         <div className="flex justify-start max-w-[85%]">
             <Collapsible label={`Tool: ${toolName}`}>
-                {toolInput ? JSON.stringify(toolInput, null, 2) : "(no input)"}
+                {toolInput
+                    ? JSON.stringify(toolInput, null, 2)
+                    : "(no input)"}
             </Collapsible>
         </div>
     );
 }
 
-/** Centered system pill (init, hook, error). */
 export function SystemPill({
     label,
     detail,
@@ -191,10 +182,10 @@ export function SystemPill({
 }) {
     return (
         <div className="flex justify-center">
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[0.65rem] text-[var(--text-dim)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full text-[11px] text-[var(--text-dim)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)]">
                 <span className="font-medium">{label}</span>
                 {detail && (
-                    <span className="opacity-70 max-w-60 truncate">
+                    <span className="opacity-70 max-w-72 truncate">
                         {detail}
                     </span>
                 )}
@@ -203,7 +194,6 @@ export function SystemPill({
     );
 }
 
-/** Result footer — token usage, cost, duration. */
 export function ResultFooter({
     usage,
     cost,
@@ -220,12 +210,11 @@ export function ResultFooter({
     }
     if (cost !== undefined) parts.push(fmtCost(cost));
     if (durationMs !== undefined) parts.push(fmtDuration(durationMs));
-
     if (!parts.length) return null;
 
     return (
-        <div className="flex justify-center mt-1">
-            <span className="text-[0.6rem] text-[var(--text-dim)] tracking-wide uppercase">
+        <div className="flex justify-center mt-1.5">
+            <span className="text-[11px] text-[var(--text-dim)] tracking-wide uppercase">
                 {parts.join(" · ")}
             </span>
         </div>
@@ -233,7 +222,7 @@ export function ResultFooter({
 }
 
 // ============================================================================
-// ACP bubble dispatcher — renders any Bubble.kind
+// ACP bubble dispatcher
 // ============================================================================
 
 export function AcpBubble({ bubble }: { bubble: Bubble }) {
@@ -241,18 +230,15 @@ export function AcpBubble({ bubble }: { bubble: Bubble }) {
         case "user":
             return (
                 <div className="flex justify-end">
-                    <div className="max-w-[85%] px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap bg-[var(--tiffany)] text-white rounded-br-sm">
+                    <div className="max-w-[85%] px-5 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap bg-[var(--tiffany)] text-white rounded-br-md">
                         {bubble.text}
                     </div>
                 </div>
             );
-
         case "text":
             return <TextBubble text={bubble.text ?? ""} />;
-
         case "thinking":
             return <ThinkingBubble text={bubble.text ?? ""} />;
-
         case "tool_use":
             return (
                 <ToolUseBubble
@@ -260,7 +246,6 @@ export function AcpBubble({ bubble }: { bubble: Bubble }) {
                     toolInput={bubble.toolInput}
                 />
             );
-
         case "system":
             return (
                 <SystemPill
@@ -280,23 +265,19 @@ export function AcpBubble({ bubble }: { bubble: Bubble }) {
                     }
                 />
             );
-
         case "result":
-            // Rendered as a group footer — invisible as standalone
             return null;
-
         default:
             return null;
     }
 }
 
 // ============================================================================
-// Grouping — groups bubbles by groupId, extracts result footer
+// Grouping
 // ============================================================================
 
 export function groupBubbles(bubbles: Bubble[]): BubbleGroup[] {
     const map = new Map<string, Bubble[]>();
-
     for (const b of bubbles) {
         const list = map.get(b.groupId);
         if (list) {
@@ -305,14 +286,10 @@ export function groupBubbles(bubbles: Bubble[]): BubbleGroup[] {
             map.set(b.groupId, [b]);
         }
     }
-
     const groups: BubbleGroup[] = [];
-
     for (const [id, list] of map) {
-        // Pull the result bubble out and use it as a footer
         const resultIdx = list.findIndex((b) => b.kind === "result");
         let resultFooter: BubbleGroup["resultFooter"];
-
         if (resultIdx >= 0) {
             const r = list[resultIdx]!;
             resultFooter = {
@@ -322,11 +299,9 @@ export function groupBubbles(bubbles: Bubble[]): BubbleGroup[] {
             };
             list.splice(resultIdx, 1);
         }
-
         if (list.length > 0 || resultFooter) {
             groups.push({ id, bubbles: list, resultFooter });
         }
     }
-
     return groups;
 }

@@ -1,5 +1,5 @@
 // ============================================================================
-// ChatBox — self-contained chat dialogue (messages + input + all logic)
+// ChatBox — self-contained chat dialogue (2026 sizing)
 // ============================================================================
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -14,18 +14,10 @@ import {
     groupBubbles,
 } from "../MessageBubble/MessageBubble";
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
 export interface ChatBoxProps {
     agentSlug: string;
     agentName: string;
 }
-
-// ---------------------------------------------------------------------------
-// Module-level helpers
-// ---------------------------------------------------------------------------
 
 const API_BASE = "http://localhost:8390";
 
@@ -34,38 +26,28 @@ function nextId(): string {
     return `b-${++_bubbleId}`;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
     const { conversationId } = useParams<{ conversationId?: string }>();
     const navigate = useNavigate();
     const { activeId, createConversation, fetchThread } =
         useConversationsStore();
 
-    // ---- State ----
     const [bubbles, setBubbles] = useState<Bubble[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
 
-    // ---- Refs ----
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
     const loadedConvRef = useRef<string | undefined>(undefined);
     const groupRef = useRef<string>("");
     const codexItemMapRef = useRef<Map<string, string>>(new Map());
 
-    // ---- Effects ----
-
-    // Auto-scroll to bottom when bubbles change
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [bubbles]);
 
-    // Load thread messages when opening an existing conversation
     useEffect(() => {
         if (!conversationId || conversationId === loadedConvRef.current) return;
         loadedConvRef.current = conversationId;
@@ -86,14 +68,11 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         });
     }, [conversationId, fetchThread]);
 
-    // Clean up any in-flight stream on unmount
     useEffect(() => {
         return () => {
             abortRef.current?.abort();
         };
     }, []);
-
-    // ---- Bubble management ----
 
     const MERGE_KINDS: Bubble["kind"][] = ["text", "thinking"];
 
@@ -103,8 +82,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
             opts: Partial<Omit<Bubble, "id" | "kind" | "groupId">>,
         ) => {
             setBubbles((prev) => {
-                // Merge consecutive text or thinking bubbles in the same group.
-                // OpenCode sends tiny one-word chunks — merging avoids flicker.
                 if (
                     MERGE_KINDS.includes(kind) &&
                     opts.text &&
@@ -137,10 +114,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         [],
     );
 
-    /**
-     * Replace an existing bubble's text in-place (used by Codex SDK where
-     * item.updated carries the FULL accumulated text, not a delta).
-     */
     const updateBubbleById = useCallback(
         (bubbleId: string, updates: Partial<Omit<Bubble, "id">>) => {
             setBubbles((prev) => {
@@ -154,19 +127,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         [],
     );
 
-    // ---- Codex SDK event parsing ----
-    //
-    // The @openai/codex-sdk emits typed ThreadEvent JSON objects.  We detect
-    // them by their dotted `type` field ("item.started", "turn.completed", …)
-    // and map each item kind to the appropriate Bubble.
-    //
-    // For streaming text items (agent_message, reasoning) the SDK sends
-    // item.started → item.updated* → item.completed, where each payload
-    // carries the FULL accumulated text.  We create the bubble on the first
-    // event and replace text on subsequent events (unlike OpenCode/Claude
-    // where each chunk is a delta that gets appended).
-
-    /** Map a Codex ThreadItem to a bubble, creating or updating as needed. */
     function handleCodexItem(
         item: any,
         eventType: "item.started" | "item.updated" | "item.completed",
@@ -175,7 +135,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         const existingBubbleId = codexItemMapRef.current.get(itemId);
 
         switch (item.type) {
-            // -- Streaming text: agent reply --
             case "agent_message": {
                 const text: string = item.text ?? "";
                 if (existingBubbleId) {
@@ -195,8 +154,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 }
                 break;
             }
-
-            // -- Streaming text: agent reasoning --
             case "reasoning": {
                 const text: string = item.text ?? "";
                 if (existingBubbleId) {
@@ -216,8 +173,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 }
                 break;
             }
-
-            // -- Command execution: show on completion --
             case "command_execution":
                 if (eventType === "item.completed") {
                     appendBubble("tool_use", {
@@ -230,8 +185,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     });
                 }
                 break;
-
-            // -- File changes: show on completion --
             case "file_change":
                 if (eventType === "item.completed") {
                     const changes = (item.changes ?? []) as Array<{
@@ -247,8 +200,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     });
                 }
                 break;
-
-            // -- MCP tool call: show on completion --
             case "mcp_tool_call":
                 if (eventType === "item.completed") {
                     appendBubble("tool_use", {
@@ -257,8 +208,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     });
                 }
                 break;
-
-            // -- Web search: show as system bubble --
             case "web_search":
                 if (eventType === "item.completed") {
                     appendBubble("system", {
@@ -267,8 +216,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     });
                 }
                 break;
-
-            // -- Todo list: show as system bubble --
             case "todo_list":
                 if (eventType === "item.completed") {
                     const items: Array<{ text: string; completed: boolean }> =
@@ -286,8 +233,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     });
                 }
                 break;
-
-            // -- Error item --
             case "error":
                 appendBubble("system", {
                     systemSubtype: "error",
@@ -297,9 +242,7 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         }
     }
 
-    /** Top-level Codex SDK ThreadEvent dispatcher. */
     function handleCodexSDKEvent(parsed: any): boolean {
-        // Quick guard: only handle known Codex SDK event types
         const isCodexType =
             parsed.type &&
             (parsed.type.startsWith("thread.") ||
@@ -309,23 +252,17 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
             parsed.type === "error" &&
             typeof parsed.message === "string" &&
             !parsed.item;
-        if (!isCodexType && !isStreamError) {
-            return false;
-        }
+        if (!isCodexType && !isStreamError) return false;
 
         switch (parsed.type) {
             case "thread.started":
-                // Store thread_id for later resumption (server-side persists it)
                 appendBubble("system", {
                     systemSubtype: "init",
                     systemDetail: `Codex thread ready`,
                 });
                 break;
-
             case "turn.started":
-                // New turn — nothing to show
                 break;
-
             case "item.started":
             case "item.updated":
             case "item.completed":
@@ -333,7 +270,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     handleCodexItem(parsed.item, parsed.type);
                 }
                 break;
-
             case "turn.completed":
                 if (parsed.usage) {
                     appendBubble("result", {
@@ -344,16 +280,13 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     });
                 }
                 break;
-
             case "turn.failed":
                 appendBubble("system", {
                     systemSubtype: "error",
                     text: parsed.error?.message ?? "Turn failed",
                 });
                 break;
-
             case "error":
-                // Top-level stream error (non-item)
                 if (isStreamError) {
                     appendBubble("system", {
                         systemSubtype: "error",
@@ -362,38 +295,31 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 }
                 break;
         }
-
         return true;
     }
-
-    // ---- OpenCode ACP parsing ----
 
     function parseOpenCodeUpdate(notif: {
         sessionId: string;
         update: any;
     }): void {
         const { update } = notif;
-
         switch (update.sessionUpdate) {
             case "agent_message_chunk":
                 if (update.content?.text) {
                     appendBubble("text", { text: update.content.text });
                 }
                 break;
-
             case "agent_thought_chunk":
                 if (update.content?.text) {
                     appendBubble("thinking", { text: update.content.text });
                 }
                 break;
-
             case "tool_call":
                 appendBubble("tool_use", {
                     toolName: update.title ?? "unknown",
                     toolInput: update.input,
                 });
                 break;
-
             case "tool_call_update":
                 if (
                     update.status === "completed" ||
@@ -405,7 +331,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     });
                 }
                 break;
-
             case "usage_update":
                 appendBubble("result", {
                     usage: {
@@ -415,19 +340,16 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     cost: update.cost?.amount ?? 0,
                 });
                 break;
-
             case "plan":
             case "available_commands_update":
             case "user_message_chunk":
                 break;
-
             case "current_mode_update":
                 appendBubble("system", {
                     systemSubtype: "mode",
                     systemDetail: `Mode: ${update.mode}`,
                 });
                 break;
-
             default:
                 break;
         }
@@ -435,12 +357,9 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
 
     function parseAcpLine(line: string): void {
         if (!line.trim()) return;
-
-        // Skip SSE metadata lines (event: …, :ok, etc.)
-        if (line.trim().startsWith("event:") || line.trim().startsWith(":")) return;
-
+        if (line.trim().startsWith("event:") || line.trim().startsWith(":"))
+            return;
         line = line.trim().replace("data: ", "");
-
         if (line === "[DONE]") return;
 
         let parsed: any;
@@ -456,8 +375,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
             return;
         }
 
-        // --- Local SDK stream format (handleLocalSDK.ts) ---
-        // { type: "thinking", content: "..." } or { type: "text", content: "..." }
         if (
             (parsed.type === "thinking" || parsed.type === "text") &&
             typeof parsed.content === "string"
@@ -469,22 +386,58 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
             return;
         }
 
-        // --- OpenCode ACP format ---
+        // Local SDK system init
+        if (parsed.type === "system" && parsed.subtype === "init") {
+            appendBubble("system", {
+                systemSubtype: "init",
+                systemDetail: `${parsed.tools?.length ?? 0} tools available`,
+            });
+            return;
+        }
+
+        // Local SDK tool_call
+        if (parsed.type === "tool_call" && parsed.name) {
+            appendBubble("tool_use", {
+                toolName: parsed.name,
+                toolInput: parsed.arguments
+                    ? (() => {
+                          try {
+                              return JSON.parse(parsed.arguments);
+                          } catch {
+                              return parsed.arguments;
+                          }
+                      })()
+                    : undefined,
+            });
+            return;
+        }
+
+        // Local SDK tool_result
+        if (parsed.type === "tool_result") {
+            return; // shown as a system pill already
+        }
+
+        // Local SDK agent_turn
+        if (parsed.type === "agent_turn") return;
+
+        // Local SDK agent_done
+        if (parsed.type === "agent_done") {
+            if (parsed.warning) {
+                appendBubble("system", {
+                    systemSubtype: "error",
+                    text: parsed.warning,
+                });
+            }
+            return;
+        }
+
         if (parsed.sessionId && parsed.update?.sessionUpdate) {
             parseOpenCodeUpdate(parsed);
             return;
         }
 
-        // --- Codex SDK format ---
-        // ThreadEvent types: thread.*, turn.*, item.*, error
-        if (handleCodexSDKEvent(parsed)) {
-            return;
-        }
+        if (handleCodexSDKEvent(parsed)) return;
 
-        // --- Kimi Code format ---
-        // Kimi outputs { "role": "assistant", "content": "..." } in text
-        // mode, and the same role-based format in stream-json mode for the
-        // final response object.
         if (parsed.role) {
             switch (parsed.role) {
                 case "assistant":
@@ -493,7 +446,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                     }
                     break;
                 case "user":
-                    // User messages are already shown from local state; ignore.
                     break;
                 case "system":
                 case "tool":
@@ -508,7 +460,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
             return;
         }
 
-        // --- Claude Code stream-json format ---
         if (!parsed.type) {
             appendBubble("text", { text: line });
             return;
@@ -542,7 +493,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                         break;
                 }
                 break;
-
             case "assistant": {
                 const blocks = parsed.message?.content;
                 if (!Array.isArray(blocks)) break;
@@ -566,7 +516,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 }
                 break;
             }
-
             case "result":
                 if (parsed.subtype === "success") {
                     appendBubble("result", {
@@ -583,8 +532,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 break;
         }
     }
-
-    // ---- SSE stream consumer ----
 
     async function streamAgentReply(
         message: string,
@@ -623,18 +570,14 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
-
                 buffer += decoder.decode(value, { stream: true });
-
                 const parts = buffer.split("\n");
                 buffer = parts.pop() ?? "";
-
                 for (const line of parts) {
                     parseAcpLine(line);
                 }
             }
 
-            // Final flush
             buffer += decoder.decode();
             if (buffer.trim()) {
                 parseAcpLine(buffer.trim());
@@ -647,8 +590,6 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         }
     }
 
-    // ---- Send / Stop ----
-
     async function handleSend() {
         const text = input.trim();
         if (!text || sending) return;
@@ -656,25 +597,18 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         setInput("");
         setSending(true);
 
-        // Auto-create conversation if there isn't an active one
         let convId = activeId;
         if (!convId) {
             const title = text.length > 40 ? text.slice(0, 40) + "..." : text;
-            const conv = await createConversation({
-                agentSlug,
-                title,
-            });
+            const conv = await createConversation({ agentSlug, title });
             if (conv) {
                 convId = conv.id;
                 navigate(`/chat/${agentSlug}/${conv.id}`, { replace: true });
             }
         }
 
-        // Start a new group for this conversation turn
         groupRef.current = nextId();
         codexItemMapRef.current.clear();
-
-        // Add user bubble
         appendBubble("user", { text });
 
         const abortController = new AbortController();
@@ -711,14 +645,12 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
         }
     }
 
-    // ---- Render ----
-
     return (
         <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)] overflow-scroll w-full">
-            {/* Messages — central canvas */}
+            {/* Messages */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto py-4 flex flex-col gap-3 max-w-[760px] mx-auto w-full px-6"
+                className="flex-1 overflow-y-auto py-5 flex flex-col gap-4 max-w-[800px] mx-auto w-full px-6"
             >
                 {bubbles.length === 0 && (
                     <EmptyChat
@@ -728,7 +660,7 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 )}
 
                 {groupBubbles(bubbles).map((group) => (
-                    <div key={group.id} className="flex flex-col gap-1">
+                    <div key={group.id} className="flex flex-col gap-1.5">
                         {group.bubbles.map((b) => (
                             <AcpBubble key={b.id} bubble={b} />
                         ))}
@@ -745,9 +677,9 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                 {sending && <LoadingBubble />}
             </div>
 
-            {/* Input bar — Photoshop control strip */}
-            <div className="flex items-end gap-2 py-2.5 px-4 border-t border-[var(--border-panel)] bg-[var(--bg-surface)] shrink-0">
-                <div className="flex-1 max-w-[760px] mx-auto w-full flex items-end gap-2">
+            {/* Input bar */}
+            <div className="flex items-end gap-2.5 py-3 px-5 border-t border-[var(--border-panel)] bg-[var(--bg-surface)] shrink-0">
+                <div className="flex-1 max-w-[800px] mx-auto w-full flex items-end gap-2.5">
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
@@ -755,18 +687,18 @@ export function ChatBox({ agentSlug, agentName }: ChatBoxProps) {
                         placeholder={`Message ${agentName}...`}
                         disabled={sending}
                         rows={1}
-                        className="flex-1 resize-none max-h-32 px-3 py-1.5 text-[13px] font-sans text-[var(--text-primary)] bg-[var(--bg-canvas)] border border-[var(--border-panel)] rounded-sm outline-none transition-colors focus:border-[var(--tiffany)] focus:bg-white placeholder:text-[var(--text-dim)]"
+                        className="flex-1 resize-none max-h-36 px-3.5 py-2 text-[14px] font-sans text-[var(--text-primary)] bg-[var(--bg-canvas)] border border-[var(--border-panel)] rounded-md outline-none transition-colors focus:border-[var(--tiffany)] focus:bg-white placeholder:text-[var(--text-dim)]"
                     />
                     {sending ? (
                         <button
-                            className="px-3 py-1.5 text-[11px] font-semibold text-white bg-red-500 hover:bg-red-600 rounded-sm transition-colors shrink-0"
+                            className="px-4 py-2 text-[12px] font-semibold text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors shrink-0"
                             onClick={handleStop}
                         >
                             Stop
                         </button>
                     ) : (
                         <button
-                            className="px-3 py-1.5 text-[11px] font-semibold text-white bg-[var(--tiffany)] hover:bg-[var(--tiffany-deep)] rounded-sm transition-colors shrink-0 disabled:opacity-30 disabled:cursor-default"
+                            className="px-4 py-2 text-[12px] font-semibold text-white bg-[var(--tiffany)] hover:bg-[var(--tiffany-deep)] rounded-md transition-colors shrink-0 disabled:opacity-30 disabled:cursor-default"
                             onClick={handleSend}
                             disabled={!input.trim()}
                         >

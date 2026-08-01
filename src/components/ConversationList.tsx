@@ -1,5 +1,5 @@
 // ============================================================================
-// ConversationList — left sidebar with conversation history
+// ConversationList — left sidebar (2026 sizing)
 // ============================================================================
 
 import { useEffect, useCallback, useState, useRef } from "react";
@@ -31,8 +31,8 @@ function relativeTime(iso: string): string {
 function PlusIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -48,8 +48,8 @@ function PlusIcon() {
 function ChatIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -65,8 +65,8 @@ function ChatIcon() {
 function TrashIcon() {
     return (
         <svg
-            width="14"
-            height="14"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -82,8 +82,8 @@ function TrashIcon() {
 function EditIcon() {
     return (
         <svg
-            width="12"
-            height="12"
+            width="13"
+            height="13"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -100,8 +100,8 @@ function EditIcon() {
 function FolderIcon() {
     return (
         <svg
-            width="14"
-            height="14"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -117,8 +117,8 @@ function FolderIcon() {
 function WarningIcon() {
     return (
         <svg
-            width="24"
-            height="24"
+            width="28"
+            height="28"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -149,17 +149,13 @@ function ConfirmDeleteModal({
     const confirmRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
-        // Focus the confirm button on mount so Enter works naturally,
-        // but user can Tab to Cancel if needed.
         confirmRef.current?.focus();
-
         function handleKey(e: KeyboardEvent) {
             if (e.key === "Escape") {
                 e.preventDefault();
                 onCancel();
             }
         }
-
         document.addEventListener("keydown", handleKey);
         return () => document.removeEventListener("keydown", handleKey);
     }, [onCancel]);
@@ -170,37 +166,32 @@ function ConfirmDeleteModal({
             onClick={onCancel}
         >
             <div
-                className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl shadow-2xl w-[340px] p-6 flex flex-col gap-4"
+                className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl w-[360px] p-7 flex flex-col gap-5"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Icon + Title */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3.5">
                     <WarningIcon />
-                    <h3 className="text-[0.9rem] font-semibold text-[var(--text-primary)] m-0">
+                    <h3 className="text-[15px] font-semibold text-[var(--text-primary)] m-0">
                         Delete conversation?
                     </h3>
                 </div>
-
-                {/* Description */}
-                <p className="text-[0.75rem] text-[var(--text-dim)] m-0 leading-relaxed">
+                <p className="text-[13px] text-[var(--text-dim)] m-0 leading-relaxed">
                     This will permanently delete "
                     <span className="text-[var(--text-primary)] font-medium">
                         {conversation.title}
                     </span>
                     " and all its messages. This action cannot be undone.
                 </p>
-
-                {/* Actions */}
-                <div className="flex justify-end gap-2 pt-1">
+                <div className="flex justify-end gap-2.5 pt-1">
                     <button
-                        className="px-3.5 py-1.5 rounded-lg text-[0.75rem] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)] transition-colors"
+                        className="px-4 py-2 rounded-lg text-[13px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)] transition-colors"
                         onClick={onCancel}
                     >
                         Cancel
                     </button>
                     <button
                         ref={confirmRef}
-                        className="px-3.5 py-1.5 rounded-lg text-[0.75rem] font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+                        className="px-4 py-2 rounded-lg text-[13px] font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
                         onClick={onConfirm}
                         onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -240,20 +231,16 @@ export function ConversationList() {
 
     const API_BASE = "http://localhost:8390";
 
-    // Sync URL param to store
     useEffect(() => {
         setActiveId(conversationId ?? null);
     }, [conversationId, setActiveId]);
 
-    // Fetch conversations on mount
     useEffect(() => {
         fetchConversations();
     }, [fetchConversations]);
 
-    // Filter to current agent
     const filtered = conversations.filter((c) => c.agentSlug === slug);
 
-    // Get agent name for a given slug
     const agentName = useCallback((agentSlug: string) => {
         return (
             BUILTIN_AGENTS.find((a) => a.slug === agentSlug)?.name ?? agentSlug
@@ -293,7 +280,6 @@ export function ConversationList() {
         setPendingDelete(null);
     }
 
-    // ---- Inline rename state ----
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState("");
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -340,13 +326,10 @@ export function ConversationList() {
         try {
             await fetch(
                 `${API_BASE}/api/conversations/${conv.id}/open-folder`,
-                {
-                    method: "POST",
-                    mode: "cors",
-                },
+                { method: "POST", mode: "cors" },
             );
         } catch (_) {
-            // Silently fail — folder open is best-effort
+            // Best-effort
         }
     }
 
@@ -355,11 +338,11 @@ export function ConversationList() {
     }
 
     return (
-        <aside className="w-60 shrink-0 flex flex-col h-screen border-r border-[var(--border-panel)] bg-[var(--bg-panel)]">
-            {/* Back navigation — compact panel section */}
-            <div className="px-3 py-2 border-b border-[var(--border-panel)]">
+        <aside className="w-[260px] shrink-0 flex flex-col h-screen border-r border-[var(--border-panel)] bg-[var(--bg-panel)]">
+            {/* Back navigation */}
+            <div className="px-3.5 py-2.5 border-b border-[var(--border-panel)]">
                 <button
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors"
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[12px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors"
                     onClick={() => {
                         if (slug === "local") {
                             navigate("/setup");
@@ -369,8 +352,8 @@ export function ConversationList() {
                     }}
                 >
                     <svg
-                        width="12"
-                        height="12"
+                        width="14"
+                        height="14"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -384,13 +367,13 @@ export function ConversationList() {
                 </button>
             </div>
 
-            {/* Panel header — Photoshop tab style */}
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border-panel)]">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)] select-none">
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-3.5 py-2 border-b border-[var(--border-panel)]">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.045em] text-[var(--text-dim)] select-none">
                     Conversations
                 </span>
                 <button
-                    className="flex items-center justify-center w-5 h-5 rounded-sm text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors"
+                    className="flex items-center justify-center w-6 h-6 rounded-md text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors"
                     onClick={handleNew}
                     title="New conversation"
                 >
@@ -399,17 +382,17 @@ export function ConversationList() {
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto py-1">
+            <div className="flex-1 overflow-y-auto py-1.5">
                 {loading && filtered.length === 0 && (
-                    <p className="text-[11px] text-[var(--text-dim)] text-center py-8">
+                    <p className="text-[12px] text-[var(--text-dim)] text-center py-10">
                         Loading...
                     </p>
                 )}
 
                 {!loading && filtered.length === 0 && (
-                    <div className="flex flex-col items-center gap-2 py-10 px-4">
+                    <div className="flex flex-col items-center gap-3 py-12 px-4">
                         <ChatIcon />
-                        <p className="text-[11px] text-[var(--text-dim)] text-center leading-relaxed">
+                        <p className="text-[12px] text-[var(--text-dim)] text-center leading-relaxed">
                             No conversations yet
                         </p>
                     </div>
@@ -421,15 +404,16 @@ export function ConversationList() {
                     return (
                         <div
                             key={conv.id}
-                            onClick={() => !isRenaming && handleSelect(conv.id)}
-                            className={`group relative flex flex-col gap-0.5 mx-1 my-0.5 px-3 py-1.5 rounded-sm transition-colors duration-150 cursor-pointer ${
+                            onClick={() =>
+                                !isRenaming && handleSelect(conv.id)
+                            }
+                            className={`group relative flex flex-col gap-1 mx-1.5 my-0.5 px-3.5 py-2 rounded-md transition-colors duration-150 cursor-pointer ${
                                 isActive
                                     ? "bg-[var(--bg-surface)] border-l-[3px] border-l-[var(--tiffany)] shadow-sm"
                                     : "border-l-[3px] border-l-transparent hover:bg-[var(--bg-surface)]"
                             } ${isRenaming ? "cursor-text" : ""}`}
                         >
-                            {/* Title */}
-                            <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
                                 {isRenaming ? (
                                     <input
                                         ref={renameInputRef}
@@ -440,11 +424,11 @@ export function ConversationList() {
                                         onKeyDown={handleRenameKeyDown}
                                         onBlur={commitRename}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="flex-1 text-[12px] font-medium bg-transparent border-b border-[var(--tiffany)] text-[var(--text-primary)] outline-none min-w-0 py-0"
+                                        className="flex-1 text-[13px] font-medium bg-transparent border-b border-[var(--tiffany)] text-[var(--text-primary)] outline-none min-w-0 py-0.5"
                                     />
                                 ) : (
                                     <span
-                                        className="text-[12px] font-medium text-[var(--text-primary)] truncate flex-1 leading-snug"
+                                        className="text-[13px] font-medium text-[var(--text-primary)] truncate flex-1 leading-snug"
                                         onDoubleClick={(e) => {
                                             e.stopPropagation();
                                             startRename(conv);
@@ -455,38 +439,35 @@ export function ConversationList() {
                                     </span>
                                 )}
 
-                                {/* Action buttons (visible on hover) */}
                                 {!isRenaming && (
-                                    <div className="hidden group-hover:flex items-center gap-px shrink-0">
+                                    <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 startRename(conv);
                                             }}
-                                            className="flex items-center justify-center w-4 h-4 rounded-sm text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors"
+                                            className="flex items-center justify-center w-5 h-5 rounded-md text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors"
                                             title="Rename"
                                         >
                                             <EditIcon />
                                         </button>
-
                                         {conv.sessionId && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleOpenFolder(conv);
                                                 }}
-                                                className="flex items-center justify-center w-4 h-4 rounded-sm text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors"
+                                                className="flex items-center justify-center w-5 h-5 rounded-md text-[var(--text-dim)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors"
                                                 title="Open folder"
                                             >
                                                 <FolderIcon />
                                             </button>
                                         )}
-
                                         <button
                                             onClick={(e) =>
                                                 handleDelete(e, conv)
                                             }
-                                            className="flex items-center justify-center w-4 h-4 rounded-sm text-[var(--text-dim)] hover:text-red-500 hover:bg-red-50 transition-colors"
+                                            className="flex items-center justify-center w-5 h-5 rounded-md text-[var(--text-dim)] hover:text-red-500 hover:bg-red-50 transition-colors"
                                             title="Delete"
                                         >
                                             <TrashIcon />
@@ -495,8 +476,7 @@ export function ConversationList() {
                                 )}
                             </div>
 
-                            {/* Meta */}
-                            <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-dim)]">
+                            <div className="flex items-center gap-2 text-[11px] text-[var(--text-dim)]">
                                 <span>{agentName(conv.agentSlug)}</span>
                                 <span className="opacity-40">·</span>
                                 <span>{relativeTime(conv.updatedAt)}</span>
@@ -506,7 +486,6 @@ export function ConversationList() {
                 })}
             </div>
 
-            {/* Confirm delete modal */}
             {pendingDelete && (
                 <ConfirmDeleteModal
                     conversation={pendingDelete}

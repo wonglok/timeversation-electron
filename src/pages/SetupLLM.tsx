@@ -1,13 +1,9 @@
 // ============================================================================
-// Setup page — download & manage local LLM models from Hugging Face
+// Setup page — download & manage local LLM models (2026 sizing)
 // ============================================================================
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-// ============================================================================
-// Constants
-// ============================================================================
 
 const API_BASE = "http://localhost:8390";
 
@@ -51,8 +47,9 @@ interface SseError {
 }
 
 type SseEvent = SseProgress | SseDone | SseCancelled | SseError;
+
 // ============================================================================
-// Preset models for quick download
+// Preset models
 // ============================================================================
 
 const PRESET_MODELS: Array<{ label: string; repo: string }> = [
@@ -98,8 +95,8 @@ function formatPercent(downloaded: number, total: number): string {
 function ArrowLeftIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -134,8 +131,8 @@ function DownloadIcon({ size = 16 }: { size?: number }) {
 function FolderIcon() {
     return (
         <svg
-            width="20"
-            height="20"
+            width="22"
+            height="22"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -151,8 +148,8 @@ function FolderIcon() {
 function FileIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -169,8 +166,8 @@ function FileIcon() {
 function XIcon() {
     return (
         <svg
-            width="14"
-            height="14"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -186,8 +183,8 @@ function XIcon() {
 function AlertIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -204,8 +201,8 @@ function AlertIcon() {
 function ChipIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -221,8 +218,8 @@ function ChipIcon() {
 function LoaderIcon() {
     return (
         <svg
-            width="16"
-            height="16"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -238,7 +235,7 @@ function LoaderIcon() {
 
 function CircleDotIcon() {
     return (
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+        <svg width="9" height="9" viewBox="0 0 8 8" fill="currentColor">
             <circle cx="4" cy="4" r="4" />
         </svg>
     );
@@ -251,7 +248,6 @@ function CircleDotIcon() {
 export function SetupLLM() {
     const navigate = useNavigate();
 
-    // --- State ---
     const [models, setModels] = useState<ModelsList | null>(null);
     const [repo, setRepo] = useState("hf:giladgd/gemma-4-E2B-it-GGUF:Q6_K");
     const [downloading, setDownloading] = useState(false);
@@ -269,7 +265,6 @@ export function SetupLLM() {
     >({});
     const [checkingPresets, setCheckingPresets] = useState(false);
 
-    // --- Check remote compatibility for preset models ---
     const checkPresetCompat = useCallback(async () => {
         setCheckingPresets(true);
         const results: Record<
@@ -308,12 +303,10 @@ export function SetupLLM() {
         setCheckingPresets(false);
     }, []);
 
-    // Auto-check preset compatibility on mount
     useEffect(() => {
         checkPresetCompat();
     }, [checkPresetCompat]);
 
-    // --- Fetch models list ---
     const fetchModels = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE}/api/llm/models`, {
@@ -331,7 +324,6 @@ export function SetupLLM() {
         fetchModels();
     }, [fetchModels]);
 
-    // --- Download model ---
     const startDownload = useCallback(async () => {
         if (!repo.trim()) return;
 
@@ -373,7 +365,6 @@ export function SetupLLM() {
 
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split("\n");
-                // Keep the last partial line in the buffer
                 buffer = lines.pop() ?? "";
 
                 for (const line of lines) {
@@ -425,7 +416,6 @@ export function SetupLLM() {
         }
     }, [repo, fetchModels]);
 
-    // --- Cancel download ---
     const cancelDownload = useCallback(async () => {
         abortRef.current?.abort();
         try {
@@ -438,7 +428,6 @@ export function SetupLLM() {
         }
     }, []);
 
-    // --- Load model and navigate to chat ---
     const loadModel = useCallback(
         async (modelPath: string) => {
             setLoadingModel(modelPath);
@@ -462,7 +451,9 @@ export function SetupLLM() {
                 navigate("/chat/local");
             } catch (err) {
                 setError(
-                    err instanceof Error ? err.message : "Failed to load model",
+                    err instanceof Error
+                        ? err.message
+                        : "Failed to load model",
                 );
             } finally {
                 setLoadingModel(null);
@@ -471,26 +462,20 @@ export function SetupLLM() {
         [fetchModels, navigate],
     );
 
-    // --- Select preset ---
     const selectPreset = (presetRepo: string) => {
         setRepo(presetRepo);
         setShowPresets(false);
     };
 
-    // --- Derived state ---
     const hasModels = (models?.files.length ?? 0) > 0;
 
-    // ==================================================================
-    // Render
-    // ==================================================================
-
     return (
-        <main className="flex flex-col items-center px-6 pt-12 pb-16 min-h-screen bg-[var(--bg-canvas)]">
+        <main className="flex flex-col items-center px-6 pt-16 pb-20 min-h-screen bg-[var(--bg-canvas)]">
             {/* ---- Back link ---- */}
-            <div className="w-full max-w-[680px] mb-6">
+            <div className="w-full max-w-[720px] mb-8">
                 <Link
                     to="/menu"
-                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] transition-colors"
+                    className="inline-flex items-center gap-2 text-[12px] font-medium text-[var(--text-dim)] hover:text-[var(--text-primary)] transition-colors"
                 >
                     <ArrowLeftIcon />
                     Back
@@ -498,39 +483,36 @@ export function SetupLLM() {
             </div>
 
             {/* ---- Header ---- */}
-            <section className="flex flex-col items-center text-center max-w-[560px] gap-2 mb-10">
-                <h1 className="text-[22px] font-bold tracking-[-0.02em] text-[var(--text-primary)] m-0">
+            <section className="flex flex-col items-center text-center max-w-[640px] gap-3 mb-12">
+                <h1 className="text-[28px] font-bold tracking-[-0.02em] text-[var(--text-primary)] m-0">
                     Model Setup
                 </h1>
-                <p className="text-[13px] text-[var(--text-dim)] leading-relaxed max-w-[420px] m-0">
+                <p className="text-[14px] text-[var(--text-dim)] leading-relaxed max-w-[460px] m-0">
                     Download and manage local LLM models from Hugging Face.
                     Models are stored in your app data directory.
                 </p>
             </section>
 
             {/* ---- Download Section ---- */}
-            <section className="w-full max-w-[680px] mb-10">
-                <div className="ps-panel p-5">
-                    {/* Panel header */}
-                    <div className="ps-panel-header -mx-5 -mt-5 mb-4 rounded-t-sm">
+            <section className="w-full max-w-[720px] mb-12">
+                <div className="ps-panel p-6">
+                    <div className="ps-panel-header -mx-6 -mt-6 mb-5 rounded-t-sm">
                         Download Model
                     </div>
 
-                    {/* Repo input row */}
-                    <div className="flex gap-2">
-                        {/* Presets dropdown button */}
+                    <div className="flex gap-2.5">
                         <div className="relative">
                             <button
                                 type="button"
-                                className="btn-secondary text-[12px] px-3 py-2 gap-1.5"
+                                className="btn-secondary text-[13px] px-3.5 py-2 gap-2"
                                 onClick={() => setShowPresets(!showPresets)}
                             >
                                 <span className="whitespace-nowrap">
                                     Presets
                                 </span>
                                 <svg
-                                    width="10"
-                                    height="10"
+                                    width="11"
+                                    height="11"
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
@@ -542,10 +524,9 @@ export function SetupLLM() {
                                 </svg>
                             </button>
 
-                            {/* Preset dropdown menu */}
                             {showPresets && (
-                                <div className="absolute left-0 top-full mt-1 z-10 border border-[var(--border-subtle)] rounded-sm bg-[var(--bg-surface)] shadow-sm min-w-[280px]">
-                                    <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--text-dim)] border-b border-[var(--border-subtle)] flex items-center justify-between">
+                                <div className="absolute left-0 top-full mt-1.5 z-10 border border-[var(--border-subtle)] rounded-md bg-[var(--bg-surface)] shadow-sm min-w-[300px]">
+                                    <div className="px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.045em] text-[var(--text-dim)] border-b border-[var(--border-subtle)] flex items-center justify-between">
                                         <span>Preset Models</span>
                                         {checkingPresets && <LoaderIcon />}
                                     </div>
@@ -560,7 +541,7 @@ export function SetupLLM() {
                                             <button
                                                 key={preset.repo}
                                                 type="button"
-                                                className="w-full text-left px-3 py-2 text-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-subtle)] last:border-b-0 flex items-center gap-2"
+                                                className="w-full text-left px-3.5 py-2.5 text-[13px] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-subtle)] last:border-b-0 flex items-center gap-2.5"
                                                 onClick={() =>
                                                     selectPreset(preset.repo)
                                                 }
@@ -569,17 +550,17 @@ export function SetupLLM() {
                                                     <span className="font-medium">
                                                         {preset.label}
                                                     </span>
-                                                    <span className="block text-[10px] text-[var(--text-dim)] font-mono mt-0.5 truncate">
+                                                    <span className="block text-[11px] text-[var(--text-dim)] font-mono mt-0.5 truncate">
                                                         {preset.repo}
                                                     </span>
                                                 </span>
-                                                {/* Compatibility dot */}
                                                 {isChecking ? (
-                                                    <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-[var(--text-dim)] animate-pulse" />
+                                                    <span className="shrink-0 w-3 h-3 rounded-full bg-[var(--text-dim)] animate-pulse" />
                                                 ) : compat ? (
                                                     <span
-                                                        className={`shrink-0 w-2.5 h-2.5 rounded-full ${
-                                                            compat.score >= 0.8
+                                                        className={`shrink-0 w-3 h-3 rounded-full ${
+                                                            compat.score >=
+                                                            0.8
                                                                 ? "bg-lime-400 lime-pulse-dot"
                                                                 : compat.score >=
                                                                     0.5
@@ -590,7 +571,7 @@ export function SetupLLM() {
                                                     />
                                                 ) : (
                                                     <span
-                                                        className="shrink-0 w-2.5 h-2.5 rounded-full bg-[var(--border-subtle)]"
+                                                        className="shrink-0 w-3 h-3 rounded-full bg-[var(--border-subtle)]"
                                                         title="Compatibility unknown"
                                                     />
                                                 )}
@@ -604,7 +585,7 @@ export function SetupLLM() {
                         <div className="flex-1">
                             <input
                                 type="text"
-                                className="input-field w-full text-[12px]"
+                                className="input-field w-full text-[13px]"
                                 placeholder="hf:user/repo or hf:user/repo:file.gguf"
                                 value={repo}
                                 onChange={(e) => setRepo(e.target.value)}
@@ -619,17 +600,17 @@ export function SetupLLM() {
 
                         {!downloading ? (
                             <button
-                                className="btn-primary text-[12px] px-4 py-2"
+                                className="btn-primary text-[13px] px-5 py-2.5"
                                 onClick={startDownload}
                                 disabled={!repo.trim()}
                             >
-                                <DownloadIcon size={14} />
+                                <DownloadIcon size={15} />
                                 Download
                             </button>
                         ) : (
                             <div className="flex flex-col gap-1.5">
                                 <button
-                                    className="btn-secondary text-[12px] px-4 py-2 text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 w-full"
+                                    className="btn-secondary text-[13px] px-5 py-2.5 text-red-500 border-red-200 hover:border-red-300 hover:bg-red-50 w-full"
                                     onClick={cancelDownload}
                                 >
                                     <XIcon />
@@ -639,9 +620,8 @@ export function SetupLLM() {
                         )}
                     </div>
 
-                    {/* Error message */}
                     {error && (
-                        <div className="mt-4 flex items-start gap-2 p-3 rounded-sm bg-red-50 border border-red-200 text-[12px] text-red-700">
+                        <div className="mt-5 flex items-start gap-2.5 p-3.5 rounded-md bg-red-50 border border-red-200 text-[13px] text-red-700">
                             <span className="shrink-0 mt-0.5 text-red-400">
                                 <AlertIcon />
                             </span>
@@ -656,11 +636,10 @@ export function SetupLLM() {
                         </div>
                     )}
 
-                    <div className="mt-3">
+                    <div className="mt-4">
                         {downloadProgress && (
                             <div className="w-full">
-                                {/* Progress bar on top */}
-                                <div className="progress-bar mb-1">
+                                <div className="progress-bar mb-1.5">
                                     <div
                                         className="progress-bar-fill"
                                         style={{
@@ -679,8 +658,7 @@ export function SetupLLM() {
                                         }}
                                     />
                                 </div>
-                                {/* Description text below progress bar */}
-                                <div className="flex justify-between text-[10px]">
+                                <div className="flex justify-between text-[11px]">
                                     <span className="text-[var(--text-dim)] tabular-nums">
                                         {downloadProgress.total > 0
                                             ? formatPercent(
@@ -713,26 +691,23 @@ export function SetupLLM() {
 
             {/* ---- Models Directory Info ---- */}
             {models && (
-                <section className="w-full max-w-[680px] mb-8">
-                    <div className="flex items-center gap-2">
+                <section className="w-full max-w-[720px] mb-10">
+                    <div className="flex items-center gap-2.5">
                         <FolderIcon />
-                        <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+                        <span className="text-[12px] font-medium text-[var(--text-secondary)]">
                             Models directory
                         </span>
-                        <code className="text-[10px] text-[var(--text-dim)] truncate max-w-[400px]">
+                        <code className="text-[11px] text-[var(--text-dim)] truncate max-w-[420px]">
                             {models.modelsDir}
                         </code>
                         <button
                             type="button"
-                            className="btn-secondary text-[11px] px-2.5 py-1 gap-1 shrink-0"
+                            className="btn-secondary text-[12px] px-3 py-1.5 gap-1.5 shrink-0"
                             onClick={async () => {
                                 try {
                                     await fetch(
                                         `${API_BASE}/api/llm/models/open-dir`,
-                                        {
-                                            method: "POST",
-                                            mode: "cors",
-                                        },
+                                        { method: "POST", mode: "cors" },
                                     );
                                 } catch {
                                     // Best effort
@@ -741,8 +716,8 @@ export function SetupLLM() {
                             title="Open models folder in file manager"
                         >
                             <svg
-                                width="12"
-                                height="12"
+                                width="14"
+                                height="14"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
@@ -761,25 +736,25 @@ export function SetupLLM() {
             )}
 
             {/* ---- Downloaded Models List ---- */}
-            <section className="w-full max-w-[680px]">
+            <section className="w-full max-w-[720px]">
                 <div className="glass-card">
-                    <div className="ps-panel-header px-4 py-2.5 flex items-center justify-between">
+                    <div className="ps-panel-header px-5 py-3 flex items-center justify-between">
                         <span>Downloaded Models</span>
-                        <span className="text-[10px] font-normal normal-case tracking-normal tabular-nums">
+                        <span className="text-[11px] font-normal normal-case tracking-normal tabular-nums">
                             {models?.files.length ?? 0} model
                             {(models?.files.length ?? 0) !== 1 ? "s" : ""}
                         </span>
                     </div>
 
                     {!hasModels && (
-                        <div className="px-4 py-8 text-center">
-                            <div className="text-[var(--text-dim)] opacity-30 mb-3">
+                        <div className="px-5 py-10 text-center">
+                            <div className="text-[var(--text-dim)] opacity-30 mb-4">
                                 <ChipIcon />
                             </div>
-                            <p className="text-[12px] text-[var(--text-dim)] m-0">
+                            <p className="text-[13px] text-[var(--text-dim)] m-0">
                                 No models downloaded yet.
                             </p>
-                            <p className="text-[11px] text-[var(--text-dim)] mt-1 m-0">
+                            <p className="text-[12px] text-[var(--text-dim)] mt-1.5 m-0">
                                 Enter a Hugging Face repo above to get started.
                             </p>
                         </div>
@@ -793,13 +768,12 @@ export function SetupLLM() {
                                 return (
                                     <div
                                         key={file.path}
-                                        className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                                        className={`flex items-center gap-4 px-5 py-3.5 transition-colors ${
                                             isLoaded
                                                 ? "bg-[var(--bg-hover)]"
                                                 : "hover:bg-[var(--bg-hover)]"
                                         }`}
                                     >
-                                        {/* Icon */}
                                         <span
                                             className={`shrink-0 ${
                                                 isLoaded
@@ -810,36 +784,27 @@ export function SetupLLM() {
                                             <FileIcon />
                                         </span>
 
-                                        {/* Info */}
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span
-                                                    className={`text-[12px] font-medium truncate ${
-                                                        isLoaded
-                                                            ? "text-[var(--text-primary)]"
-                                                            : "text-[var(--text-primary)]"
-                                                    }`}
-                                                >
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="text-[13px] font-medium truncate text-[var(--text-primary)]">
                                                     {file.name}
                                                 </span>
                                                 {isLoaded && (
-                                                    <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium text-[var(--tiffany-deep)] bg-[var(--tiffany-glow)] px-1.5 py-0.5 rounded-sm">
+                                                    <span className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--tiffany-deep)] bg-[var(--tiffany-glow)] px-2 py-0.5 rounded-sm">
                                                         <CircleDotIcon />
                                                         Loaded
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-[10px] text-[var(--text-dim)] font-mono">
+                                            <span className="text-[11px] text-[var(--text-dim)] font-mono">
                                                 {formatBytes(file.size)}
                                             </span>
                                         </div>
 
-                                        {/* Actions */}
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                            {/* Load model */}
+                                        <div className="flex items-center gap-2 shrink-0">
                                             <button
                                                 type="button"
-                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-medium text-[var(--tiffany-deep)] hover:text-white hover:bg-[var(--tiffany)] transition-colors disabled:opacity-40"
+                                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-[var(--tiffany-deep)] hover:text-white hover:bg-[var(--tiffany)] transition-colors disabled:opacity-40"
                                                 onClick={() =>
                                                     loadModel(file.path)
                                                 }
@@ -851,8 +816,8 @@ export function SetupLLM() {
                                                     <LoaderIcon />
                                                 ) : (
                                                     <svg
-                                                        width="12"
-                                                        height="12"
+                                                        width="14"
+                                                        height="14"
                                                         viewBox="0 0 24 24"
                                                         fill="none"
                                                         stroke="currentColor"
@@ -874,8 +839,7 @@ export function SetupLLM() {
                 </div>
             </section>
 
-            {/* ---- Footer tip ---- */}
-            <p className="my-8 text-[10px] text-[var(--text-dim)] text-center max-w-[400px] leading-relaxed">
+            <p className="my-10 text-[11px] text-[var(--text-dim)] text-center max-w-[440px] leading-relaxed">
                 Models are downloaded to your app data directory and run locally
                 via node-llama-cpp. Larger models require more RAM and disk
                 space.
