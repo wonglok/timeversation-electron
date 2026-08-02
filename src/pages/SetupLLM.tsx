@@ -249,6 +249,7 @@ export function SetupLLM() {
     const navigate = useNavigate();
 
     const [models, setModels] = useState<ModelsList | null>(null);
+    const [modelsLoading, setModelsLoading] = useState(true);
     const [repo, setRepo] = useState("hf:giladgd/gemma-4-E2B-it-GGUF:Q6_K");
     const [downloading, setDownloading] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState<{
@@ -308,6 +309,7 @@ export function SetupLLM() {
     }, [checkPresetCompat]);
 
     const fetchModels = useCallback(async () => {
+        setModelsLoading(true);
         try {
             const res = await fetch(`${API_BASE}/api/llm/models`, {
                 mode: "cors",
@@ -317,6 +319,8 @@ export function SetupLLM() {
             setModels(data);
         } catch {
             // Server may not be ready
+        } finally {
+            setModelsLoading(false);
         }
     }, []);
 
@@ -751,7 +755,18 @@ export function SetupLLM() {
                         </span>
                     </div>
 
-                    {!hasModels && (
+                    {modelsLoading && !models && (
+                        <div className="px-5 py-10 text-center">
+                            <div className="text-[var(--tiffany)] mb-4 flex justify-center">
+                                <LoaderIcon />
+                            </div>
+                            <p className="text-[13px] text-[var(--text-dim)] m-0">
+                                Loading models list...
+                            </p>
+                        </div>
+                    )}
+
+                    {!modelsLoading && !hasModels && (
                         <div className="px-5 py-10 text-center">
                             <div className="text-[var(--text-dim)] opacity-30 mb-4">
                                 <ChipIcon />
