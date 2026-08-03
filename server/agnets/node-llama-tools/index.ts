@@ -95,9 +95,19 @@ export function executeToolCall(
             case "write":
                 return handleWriteTool(call.id, args, resolvePath);
             case "grep":
-                return handleGrepTool(call.id, args, workspaceRoot, resolvePath);
+                return handleGrepTool(
+                    call.id,
+                    args,
+                    workspaceRoot,
+                    resolvePath,
+                );
             case "find":
-                return handleFindTool(call.id, args, workspaceRoot, resolvePath);
+                return handleFindTool(
+                    call.id,
+                    args,
+                    workspaceRoot,
+                    resolvePath,
+                );
             case "ls":
                 return handleLsTool(call.id, args, resolvePath);
             case "show_item_in_folder":
@@ -112,7 +122,9 @@ export function executeToolCall(
                 return {
                     tool_call_id: call.id,
                     role: "tool",
-                    content: JSON.stringify({ error: `Unknown tool: ${call.name}` }),
+                    content: JSON.stringify({
+                        error: `Unknown tool: ${call.name}`,
+                    }),
                 };
         }
     } catch (err: any) {
