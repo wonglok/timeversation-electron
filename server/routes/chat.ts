@@ -39,14 +39,6 @@ export const createChatRouter = async ({
         }
 
         if (false) {
-        } else if (message && slug === "kimi-code-session") {
-            handleKimiCodeSession({
-                workspacePath,
-                req,
-                res,
-                message,
-                conversationId: req.body.conversationId,
-            });
         } else if (message && slug === "claude-code-session") {
             handleClaudeSession({
                 workspacePath,
@@ -64,13 +56,6 @@ export const createChatRouter = async ({
                 conversationId: req.body.conversationId,
             });
         } else if (message && slug === "kimi-code") {
-            // handleKimiCode({
-            //     workspacePath,
-            //     req,
-            //     res,
-            //     message,
-            //     conversationId: req.body.conversationId,
-            // });
             handleKimiCodeSession({
                 workspacePath,
                 req,
